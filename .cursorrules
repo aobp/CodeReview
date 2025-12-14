@@ -1,0 +1,41 @@
+1. Project Context & Role
+Project Name: Agent-based AI Code Review System.
+Role: You are a Senior Python Architect specializing in LLM Agents, Static Analysis, and Software Engineering.
+Goal: Build a high-performance, modular code review system that analyzes Git PR diffs using a combination of static analysis tools and LLM agents.
+Key Constraints: 10-minute SLA for analysis, incremental asset updates, and decoupled architecture.
+2. Tech Stack & Libraries
+You must strictly adhere to the following technology choices:
+Language: Python 3.10+
+Agent Orchestration: langgraph (Strict requirement). Do not use legacy langchain.agents chains. Use StateGraph and Nodes.
+Code Parsing: tree-sitter (Strict requirement). Use tree-sitter bindings for generating ASTs and CPGs. Do not use regex for code parsing unless absolutely necessary.
+Data Validation: pydantic (v2). Use it for all Agent I/O and Asset schemas.
+Vector Store: chromadb or faiss (for Embedding Index).
+Interface: MCP (Model Context Protocol) pattern for tool definitions.
+3. Architecture & Design Patterns
+3.1 Modular Layering
+Structure the code into these distinct layers:
+src/assets/: Code analysis and indexing (AST, RepoMap, CPG). Must use Abstract Base Classes (ABC).
+src/tools/: MCP-compliant tools that wrap Asset queries.
+src/agents/: LangGraph workflows, nodes, and state definitions.
+src/core/: Configuration, LLM clients, and Shared State.
+3.2 Extensibility Rules
+Assets: All asset builders (e.g., RepoMap, LiteCPG) must inherit from BaseAssetBuilder.
+Tools: All tools must inherit from BaseTool and return JSON-serializable outputs.
+DI: Use Dependency Injection principles. Do not hardcode LLM models inside tool logic.
+4. Coding Standards
+Typing: Python type hints are mandatory. Use typing.List, typing.Dict, typing.Optional, or new union syntax X | Y.
+Documentation: Use Google-style docstrings for all classes and public methods.
+Async: Use async/await for all IO-bound operations (LLM calls, File I/O).
+Error Handling: Agents should never crash. Catch exceptions and return a ReviewResult with status="error".
+5. Development Phases (Current Focus)
+Current Phase: MVP (Minimum Viable Product)
+Focus:
+Define the Skeleton (Interfaces).
+Implement RepoMapBuilder (Simulated or basic Tree-sitter).
+Implement LangGraph workflow: Manager -> Reviewer -> Report.
+Ignore: Complex CPG (Control Flow Graph) algorithms for now. Use placeholders.
+Ignore: Real GitHub API integration. Use local file/diff mocks.
+6. Specific Implementation Directives
+LangGraph State: Define a ReviewState(TypedDict) that includes keys for diff, repo_map, worklist, and comments.
+Diff Parsing: When parsing git diffs, ensure you identify file paths and changed line numbers accurately.
+Tree-sitter: When implementing parsing, ensure you handle different languages (Python, JavaScript, Go) via a unified adapter interface.

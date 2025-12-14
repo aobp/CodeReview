@@ -1,0 +1,75 @@
+{
+  "pr_diff": "diff --git a/src/main.py b/src/main.py\nindex 1234567..abcdefg 100644\n--- a/src/main.py\n+++ b/src/main.py\n@@ -10,6 +10,12 @@ def process_data(data):\n     if not data:\n         return None\n     \n+    # New feature: add validation\n+    if not isinstance(data, dict):\n+        raise ValueError(\"Data must be a dictionary\")\n+    \n+    result = {}\n+    for key, value in data.items():\n+        result[key] = value * 2\n     return result\n\ndiff --git a/src/utils/helpers.py b/src/utils/helpers.py\nindex 1111111..2222222 100644\n--- a/src/utils/helpers.py\n+++ b/src/utils/helpers.py\n@@ -5,7 +5,7 @@ def format_output(data):\n     Format the output data for display.\n     \"\"\"\n     if data is None:\n-        return \"No data\"\n+        return \"\"\n     \n     return str(data).upper()\n\n",
+  "repo_map_summary": "📁 CodeReview/\n│   📁 .vscode/\n│   📁 agents/\n│   │   📁 roles/\n│   │   │   📄 __init__.py\n│   │   │   📄 manager.py\n│   │       📄 reviewer.py\n│   │   📄 __init__.py\n│       📄 workflow.py\n│   📁 assets/\n│   │   📁 implementations/\n│   │   │   📄 __init__.py\n│   │       📄 repo_map.py\n│   │   📄 __init__.py\n│   │   📄 base.py\n│       📄 registry.py\n│   📁 core/\n│   │   📄 __init__.py\n│   │   📄 config.py\n│   │   📄 llm.py\n│       📄 state.py\n│   📁 interface/\n│       📄 __init__.py\n│   📁 tools/\n│   │   📄 __init__.py\n│   │   📄 base.py\n│   │   📄 file_tools.py\n│       📄 search_tools.py\n│   📄 main.py",
+  "focus_files": [
+    "src/main.py",
+    "src/utils/helpers.py"
+  ],
+  "identified_issues": [
+    {
+      "file": "src/main.py",
+      "line": 10,
+      "severity": "warning",
+      "message": "The function 'process_data' previously returned None for empty data, but now returns an empty dictionary. This changes the function's contract and may break existing callers expecting None.",
+      "suggestion": "Consider maintaining backward compatibility by returning None for empty data, or update all callers to handle an empty dictionary."
+    },
+    {
+      "file": "src/main.py",
+      "line": 12,
+      "severity": "info",
+      "message": "Missing type hints reduce code clarity and prevent static type checking.",
+      "suggestion": "Add type hints: def process_data(data: dict) -> dict:"
+    },
+    {
+      "file": "src/main.py",
+      "line": 13,
+      "severity": "warning",
+      "message": "The validation raises ValueError if data is not a dict, but the function previously accepted any type (returning None for empty input). This is a breaking change.",
+      "suggestion": "Document this change clearly, or consider a more gradual migration path (e.g., logging a warning first)."
+    },
+    {
+      "file": "src/main.py",
+      "line": 17,
+      "severity": "warning",
+      "message": "The operation 'value * 2' may produce unexpected results if the value is not a number (e.g., string, list).",
+      "suggestion": "Add type checking or try-except for the multiplication, or document that dictionary values must be numeric."
+    },
+    {
+      "file": "src/main.py",
+      "line": 10,
+      "severity": "info",
+      "message": "Missing docstring update for the new behavior.",
+      "suggestion": "Update the function docstring to describe the validation, the doubling operation, and the return type."
+    },
+    {
+      "file": "src/utils/helpers.py",
+      "line": 8,
+      "severity": "warning",
+      "message": "Changing the return value from 'No data' to an empty string may break upstream formatting that relies on a non-empty string.",
+      "suggestion": "Ensure callers can handle an empty string, or keep a placeholder (like 'No data') for consistency."
+    },
+    {
+      "file": "src/utils/helpers.py",
+      "line": 5,
+      "severity": "info",
+      "message": "Missing type hints and return type documentation.",
+      "suggestion": "Add type hints: def format_output(data: Any) -> str:"
+    },
+    {
+      "file": "src/utils/helpers.py",
+      "line": 8,
+      "severity": "info",
+      "message": "Using str(data).upper() may not be suitable for all data types (e.g., dictionaries, lists). It could produce unclear output like '{'A': 1}'.upper().",
+      "suggestion": "Consider a more robust formatting approach based on the expected input type, or document the function's limitations."
+    }
+  ],
+  "metadata": {
+    "workflow_version": "mvp",
+    "config_provider": "deepseek",
+    "manager_reasoning": "src/main.py contains significant logic changes (new validation and data processing) that could affect core functionality. src/utils/helpers.py modifies output formatting behavior, which may impact display consistency across the system.",
+    "diff_files_count": 2,
+    "selected_files_count": 2,
+    "reviewed_files_count": 2,
+    "issues_found": 8
+  }
+}

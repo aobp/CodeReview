@@ -1,0 +1,24 @@
+# AI Code Review Agent - MVP Dependencies
+
+# Core dependencies
+pydantic>=2.0.0
+langgraph>=0.0.40
+
+# Optional: For OpenAI or DeepSeek provider (if not using mock)
+# DeepSeek uses OpenAI-compatible API, so same package works for both
+# openai>=1.0.0
+
+# Optional: For YAML config files
+# pyyaml>=6.0.0
+
+# Optional: For .env file support
+# python-dotenv>=1.0.0
+
+# Future: For tree-sitter integration
+# tree-sitter>=0.20.0
+# tree-sitter-python>=0.20.0
+
+# Development (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+

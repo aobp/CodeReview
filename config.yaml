@@ -1,0 +1,19 @@
+# AI Code Review Agent Configuration Example
+# Copy this file to config.yaml and customize as needed
+
+llm:
+  provider: "deepseek"  # Options: "openai", "deepseek", "mock"
+  model: "deepseek-chat"  # Model name (e.g., "deepseek-chat", "gpt-4", "gpt-3.5-turbo")
+  api_key: null  # Optional: can be set via DEEPSEEK_API_KEY or LLM_API_KEY env var
+  base_url: "https://api.deepseek.com"  # DeepSeek API endpoint (default)
+  temperature: 0.7    # Temperature for LLM responses (0.0 - 2.0)
+
+# Note: If DEEPSEEK_API_KEY is set in environment and provider is "deepseek",
+# the API key will be automatically loaded from the environment variable.
+# Priority: LLM_API_KEY > DEEPSEEK_API_KEY
+
+system:
+  workspace_root: "."           # Root directory of the workspace
+  assets_dir: "assets_cache"    # Directory for storing built assets
+  timeout_seconds: 600           # Maximum time for analysis (10 minutes)
+
