@@ -3,12 +3,16 @@
 This module implements a RepoMapBuilder that generates a file tree representation
 of the codebase. For MVP, this is a simplified version that doesn't use tree-sitter
 yet, but provides the interface for future enhancement.
+
+The builder now uses the DAO layer for persistence, making it idempotent and
+preparing for future database backends.
 """
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from assets.base import BaseAssetBuilder
+from dao.factory import get_storage
 
 
 class RepoMapBuilder(BaseAssetBuilder):
@@ -38,10 +42,12 @@ class RepoMapBuilder(BaseAssetBuilder):
             self.supported_extensions = supported_extensions
     
     async def build(self, source_path: Path, **kwargs: Any) -> Dict[str, Any]:
-        """Build the repository map from the source directory.
+        """Build the repository map from the source directory and save to DAO.
         
         This method traverses the directory structure and generates a file tree
-        representation. For MVP, it's a simple text-based tree.
+        representation. The result is automatically saved to the DAO layer.
+        This method is idempotent - calling it multiple times will overwrite
+        the previous data.
         
         Args:
             source_path: Path to the source code directory.
@@ -52,6 +58,7 @@ class RepoMapBuilder(BaseAssetBuilder):
                 - "file_tree": A string representation of the file tree.
                 - "file_count": Total number of files included.
                 - "files": List of file paths relative to source_path.
+                - "source_path": The resolved source path.
         """
         source_path = Path(source_path).resolve()
         if not source_path.exists():
@@ -104,12 +111,20 @@ class RepoMapBuilder(BaseAssetBuilder):
         
         file_tree = "\n".join(file_tree_lines)
         
-        return {
+        # Build the asset data
+        asset_data = {
             "file_tree": file_tree,
             "file_count": len(files),
             "files": files,
             "source_path": str(source_path)
         }
+        
+        # Save to DAO (idempotent - will overwrite if exists)
+        storage = get_storage()
+        await storage.connect()
+        await storage.save("assets", "repo_map", asset_data)
+        
+        return asset_data
     
     async def query(self, query: str, **kwargs: Any) -> Dict[str, Any]:
         """Query the repository map.
@@ -142,35 +157,32 @@ class RepoMapBuilder(BaseAssetBuilder):
         }
     
     async def save(self, output_path: Path, asset_data: Dict[str, Any]) -> None:
-        """Save the repository map to disk.
+        """Save the repository map using DAO.
+        
+        This method is kept for backward compatibility but now uses DAO.
+        The output_path parameter is ignored - data is saved via DAO.
         
         Args:
-            output_path: Path where the asset should be saved.
+            output_path: Ignored (kept for interface compatibility).
             asset_data: The asset data dictionary to save.
         """
-        import json
-        
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(asset_data, f, indent=2, ensure_ascii=False)
+        storage = get_storage()
+        await storage.connect()
+        await storage.save("assets", "repo_map", asset_data)
     
-    async def load(self, input_path: Path) -> Dict[str, Any]:
-        """Load the repository map from disk.
+    async def load(self, input_path: Path) -> Optional[Dict[str, Any]]:
+        """Load the repository map from DAO.
+        
+        This method is kept for backward compatibility but now uses DAO.
+        The input_path parameter is ignored - data is loaded via DAO.
         
         Args:
-            input_path: Path to the saved asset file.
+            input_path: Ignored (kept for interface compatibility).
         
         Returns:
-            A dictionary containing the loaded asset data.
+            A dictionary containing the loaded asset data, or None if not found.
         """
-        import json
-        
-        input_path = Path(input_path)
-        if not input_path.exists():
-            raise FileNotFoundError(f"Asset file not found: {input_path}")
-        
-        with open(input_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        storage = get_storage()
+        await storage.connect()
+        return await storage.load("assets", "repo_map")
 

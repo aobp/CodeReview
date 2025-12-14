@@ -1,21 +1,23 @@
 """Main entry point for the AI Code Review Agent.
 
 This script demonstrates the complete workflow:
-1. Parse a Git diff
-2. Build/load RepoMap
-3. Run the LangGraph workflow
-4. Display review results
+1. Initialize Storage (DAO layer)
+2. Build Assets (RepoMap) if needed
+3. Initialize Autonomous ReAct Agent
+4. Run the agent workflow
+5. Display review results
 """
 
 import asyncio
 import argparse
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from core.config import Config
+from dao.factory import get_storage
 from assets.implementations.repo_map import RepoMapBuilder
-from assets.registry import get_registry
-from agents.workflow import run_review_workflow
+from agents.bot import run_react_agent
 
 
 def load_diff_from_file(file_path: Path) -> str:
@@ -43,39 +45,146 @@ def load_diff_from_file(file_path: Path) -> str:
         raise IOError(f"Error reading diff file: {e}")
 
 
-async def build_repo_map(workspace_root: Path) -> str:
-    """Build or load the repository map.
+async def build_repo_map_if_needed(workspace_root: Path) -> None:
+    """Build repository map if it doesn't exist in storage.
+    
+    This function checks if the repo_map asset exists in the DAO layer,
+    and builds it if it's missing. The build process is idempotent.
     
     Args:
         workspace_root: Root directory of the workspace.
-    
-    Returns:
-        A string summary of the repository structure.
     """
     try:
-        # Register RepoMapBuilder
-        registry = get_registry()
-        registry.register("repo_map", RepoMapBuilder)
+        # Initialize storage
+        storage = get_storage()
+        await storage.connect()
         
-        # Create builder instance
+        # Check if repo_map already exists
+        exists = await storage.exists("assets", "repo_map")
+        
+        if exists:
+            print("✅ Repository map already exists in storage")
+            return
+        
+        # Build the repo map (will save to DAO automatically)
+        print("🔨 Building repository map...")
         builder = RepoMapBuilder()
-        
-        # Build the repo map
         repo_map_data = await builder.build(workspace_root)
         
-        # Return a summary string
-        return repo_map_data.get("file_tree", "Repository structure not available")
+        print(f"✅ Repository map built and saved ({repo_map_data.get('file_count', 0)} files)")
     
     except Exception as e:
-        print(f"Warning: Could not build repo map: {e}")
-        return f"Repository structure unavailable: {str(e)}"
+        print(f"⚠️  Warning: Could not build repo map: {e}")
+        # Continue anyway - agent can still work without repo map
 
 
-def print_review_results(results: dict) -> None:
+def get_repo_name(workspace_root: Path) -> str:
+    """Get a recognizable repository name from workspace root.
+    
+    Args:
+        workspace_root: Path to the workspace root.
+    
+    Returns:
+        A recognizable repository name. If workspace_root is ".", returns a descriptive name.
+    """
+    workspace_root = Path(workspace_root).resolve()
+    repo_name = workspace_root.name
+    
+    # Handle edge cases where name might be empty or "."
+    if repo_name in [".", ""] or len(repo_name) == 0:
+        # Try to use the parent directory name or a default
+        parent_name = workspace_root.parent.name
+        if parent_name and parent_name not in [".", ""]:
+            return f"{parent_name}_workspace"
+        return "current_workspace"
+    
+    return repo_name
+
+
+def save_observations_to_log(
+    results: dict,
+    workspace_root: Path,
+    config: Config
+) -> Path:
+    """Save agent observations to a log file.
+    
+    Log file structure: log/repo_name/model_name/timestamp/observations.log
+    
+    Args:
+        results: The final state dictionary from the workflow.
+        workspace_root: Root directory of the workspace.
+        config: Configuration object.
+    
+    Returns:
+        Path to the saved log file.
+    """
+    metadata = results.get("metadata", {})
+    observations = metadata.get("agent_observations", [])
+    
+    if not observations:
+        return None
+    
+    # Get repo name
+    repo_name = get_repo_name(workspace_root)
+    # Sanitize repo name for filesystem
+    repo_name = repo_name.replace("/", "_").replace("\\", "_").replace("..", "")
+    
+    # Get model name from metadata or config
+    model_name = metadata.get("config_provider", config.llm.provider)
+    if not model_name:
+        model_name = "unknown"
+    # Sanitize model name
+    model_name = model_name.replace("/", "_").replace("\\", "_")
+    
+    # Generate timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Create log directory structure
+    log_dir = Path("log") / repo_name / model_name / timestamp
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save observations to log file
+    log_file = log_dir / "observations.log"
+    
+    with open(log_file, "w", encoding="utf-8") as f:
+        f.write(f"Agent Observations Log\n")
+        f.write(f"{'=' * 80}\n")
+        f.write(f"Repository: {repo_name}\n")
+        f.write(f"Model: {model_name}\n")
+        f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+        f.write(f"Total Observations: {len(observations)}\n")
+        f.write(f"{'=' * 80}\n\n")
+        
+        for i, obs in enumerate(observations, 1):
+            f.write(f"Observation {i}:\n")
+            f.write(f"{'-' * 80}\n")
+            f.write(f"{obs}\n")
+            f.write(f"\n")
+        
+        # Also save tool results if available
+        tool_results = metadata.get("agent_tool_results", [])
+        if tool_results:
+            f.write(f"\n{'=' * 80}\n")
+            f.write(f"Tool Results: {len(tool_results)}\n")
+            f.write(f"{'=' * 80}\n\n")
+            for i, tr in enumerate(tool_results, 1):
+                f.write(f"Tool Call {i}:\n")
+                f.write(f"{'-' * 80}\n")
+                f.write(f"Tool: {tr.get('tool', 'unknown')}\n")
+                f.write(f"Input: {json.dumps(tr.get('input', {}), indent=2, ensure_ascii=False)}\n")
+                f.write(f"Result: {json.dumps(tr.get('result', {}), indent=2, ensure_ascii=False)}\n")
+                f.write(f"\n")
+    
+    return log_file
+
+
+def print_review_results(results: dict, workspace_root: Path = None, config: Config = None) -> None:
     """Print the review results in a formatted way.
     
     Args:
         results: The final state dictionary from the workflow.
+        workspace_root: Optional workspace root path for log saving.
+        config: Optional configuration object for log saving.
     """
     print("\n" + "=" * 80)
     print("CODE REVIEW RESULTS")
@@ -121,7 +230,22 @@ def print_review_results(results: dict) -> None:
     if metadata:
         print(f"\n📊 Metadata:")
         for key, value in metadata.items():
-            print(f"  • {key}: {value}")
+            # Skip printing observations in metadata (will be in log file)
+            if key == "agent_observations":
+                print(f"  • {key}: [{len(value) if isinstance(value, list) else 0} observations] (saved to log)")
+            elif key == "agent_tool_results":
+                print(f"  • {key}: [{len(value) if isinstance(value, list) else 0} tool calls] (saved to log)")
+            else:
+                print(f"  • {key}: {value}")
+    
+    # Save observations to log file
+    if workspace_root and config:
+        try:
+            log_file = save_observations_to_log(results, workspace_root, config)
+            if log_file:
+                print(f"\n📝 Observations saved to: {log_file}")
+        except Exception as e:
+            print(f"\n⚠️  Warning: Could not save observations to log: {e}")
     
     print("\n" + "=" * 80)
 
@@ -220,25 +344,28 @@ async def main():
     
     print(f"📝 Processing Git diff ({len(pr_diff)} characters)...")
     
-    # Build repository map
-    print("\n🔨 Building repository map...")
-    repo_map_summary = await build_repo_map(workspace_root)
-    print("✅ Repository map built")
+    # Step 1: Initialize Storage (DAO layer)
+    print("\n💾 Initializing storage backend...")
+    storage = get_storage()
+    await storage.connect()
+    print("✅ Storage initialized")
     
-    # Run the workflow
-    print("\n🔄 Running code review workflow...")
-    print("  → Manager: Analyzing diff and identifying focus files...")
-    print("  → Reviewer: Reviewing files and generating comments...")
+    # Step 2: Build Assets if needed
+    print("\n📦 Checking assets...")
+    await build_repo_map_if_needed(workspace_root)
+    
+    # Step 3 & 4: Initialize and Run Autonomous ReAct Agent
+    print("\n🤖 Initializing autonomous ReAct agent...")
+    print("  → Agent will autonomously:")
     
     try:
-        results = await run_review_workflow(
+        results = await run_react_agent(
             pr_diff=pr_diff,
-            repo_map_summary=repo_map_summary,
             config=config
         )
         
         # Print results
-        print_review_results(results)
+        print_review_results(results, workspace_root=workspace_root, config=config)
         
         # Save results to file
         output_file = Path(args.output)
@@ -247,7 +374,7 @@ async def main():
         print(f"\n💾 Results saved to: {output_file}")
         
     except Exception as e:
-        print(f"\n❌ Error running workflow: {e}")
+        print(f"\n❌ Error running agent: {e}")
         import traceback
         traceback.print_exc()
         return 1
