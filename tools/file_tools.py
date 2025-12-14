@@ -4,7 +4,8 @@ This module provides tools for reading and analyzing files in the codebase.
 """
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+from pydantic import Field
 from tools.base import BaseTool
 
 
@@ -15,11 +16,25 @@ class ReadFileTool(BaseTool):
     It's used by agents to examine code files during the review process.
     """
     
-    def __init__(self):
-        """Initialize the ReadFileTool."""
+    workspace_root: Optional[Path] = Field(
+        default=None,
+        description="Root path of the workspace. If None, uses current working directory."
+    )
+    
+    def __init__(self, workspace_root: Optional[Path] = None, **kwargs):
+        """Initialize the ReadFileTool.
+        
+        Args:
+            workspace_root: Root path of the workspace. If None, uses current working directory.
+            **kwargs: Additional arguments passed to BaseTool.
+        """
+        if workspace_root is None:
+            workspace_root = Path.cwd()
         super().__init__(
             name="read_file",
-            description="Read the contents of a file from the codebase"
+            description="Read the contents of a file from the codebase",
+            workspace_root=workspace_root,
+            **kwargs
         )
     
     async def run(self, file_path: str, **kwargs: Any) -> Dict[str, Any]:
@@ -40,8 +55,9 @@ class ReadFileTool(BaseTool):
         try:
             file_path_obj = Path(file_path)
             if not file_path_obj.is_absolute():
-                # Assume relative to current working directory
-                file_path_obj = Path.cwd() / file_path_obj
+                # Resolve relative to workspace root
+                workspace = self.workspace_root if self.workspace_root else Path.cwd()
+                file_path_obj = workspace / file_path_obj
             
             if not file_path_obj.exists():
                 return {

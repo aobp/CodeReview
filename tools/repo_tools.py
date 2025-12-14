@@ -4,7 +4,8 @@ This module provides tools for accessing repository structure and metadata
 stored in the DAO layer.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+from pydantic import Field
 from tools.base import BaseTool
 from dao.factory import get_storage
 
@@ -18,11 +19,23 @@ class FetchRepoMapTool(BaseTool):
     relying on hardcoded context.
     """
     
-    def __init__(self):
-        """Initialize the FetchRepoMapTool."""
+    asset_key: Optional[str] = Field(
+        default=None,
+        description="Asset key for the repository map. If None, uses default 'repo_map'."
+    )
+    
+    def __init__(self, asset_key: Optional[str] = None, **kwargs):
+        """Initialize the FetchRepoMapTool.
+        
+        Args:
+            asset_key: Optional asset key for the repository map. If None, uses default "repo_map".
+            **kwargs: Additional arguments passed to BaseTool.
+        """
         super().__init__(
             name="fetch_repo_map",
-            description="Fetch the repository map to understand the project structure. Returns a summary of files and directory layout."
+            description="Fetch the repository map to understand the project structure. Returns a summary of files and directory layout.",
+            asset_key=asset_key,
+            **kwargs
         )
     
     async def run(self, **kwargs: Any) -> Dict[str, Any]:
@@ -42,7 +55,9 @@ class FetchRepoMapTool(BaseTool):
             storage = get_storage()
             await storage.connect()
             
-            repo_map_data = await storage.load("assets", "repo_map")
+            # Use asset_key if set, otherwise fall back to "repo_map" for backward compatibility
+            key = self.asset_key if self.asset_key else "repo_map"
+            repo_map_data = await storage.load("assets", key)
             
             if repo_map_data is None:
                 return {

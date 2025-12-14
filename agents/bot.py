@@ -21,17 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 class ReActAgent:
-    """Autonomous ReAct agent for code review.
-    
-    This agent follows the ReAct pattern:
-    1. Reason: Analyze the situation and decide what to do
-    2. Act: Use tools to gather information
-    3. Observe: Process tool results
-    4. Repeat until ready to generate final review
-    
-    The agent is given access to tools and makes autonomous decisions about
-    which files to review and what issues to identify.
-    """
     
     def __init__(self, llm_provider: LLMProvider, tools: List[Any]):
         """Initialize the ReAct agent.
@@ -133,71 +122,104 @@ class ReActAgent:
         
         # Count recent consecutive failures
         recent_failures = 0
-        for tr in reversed(tool_results[-5:]):  # Check last 5 tool results
+        for tr in reversed(tool_results[-5:]):
             result = tr.get("result", {})
             if isinstance(result, dict) and result.get("error"):
                 recent_failures += 1
             else:
-                break  # Stop counting on first success
+                break
         
-        # Build prompt for agent
+        # Build full context - no truncation
+        # Format all observations
         observations_text = "\n".join([
-            f"Observation {i+1}: {obs}" for i, obs in enumerate(observations[-5:])  # Last 5 observations
+            f"Observation {i+1}: {obs}" for i, obs in enumerate(observations)
         ]) if observations else "No observations yet."
         
+        # Format all tool results - full content, no truncation
         tool_results_text = "\n".join([
-            f"Tool '{tr.get('tool', 'unknown')}' result: {str(tr.get('result', ''))[:200]}"
-            for tr in tool_results[-3:]  # Last 3 tool results
-        ]) if tool_results else "No tool results yet."
+            f"Tool Call {i+1}: {tr.get('tool', 'unknown')}\n"
+            f"  Input: {json.dumps(tr.get('input', {}), indent=2, ensure_ascii=False)}\n"
+            f"  Result: {json.dumps(tr.get('result', {}), indent=2, ensure_ascii=False)}"
+            for i, tr in enumerate(tool_results)
+        ]) if tool_results else "No tool calls yet."
         
         available_tools = ", ".join(self.tools.keys())
         remaining_iterations = self.max_iterations - iterations
         
-        # Build dynamic prompt based on context
+        # Build dynamic guidance
         tool_guidance = ""
         if recent_failures >= 3:
-            tool_guidance = "\n⚠️ WARNING: Multiple recent tool calls have failed. Consider proceeding without additional tool calls or providing your review based on available information."
+            tool_guidance = "\n⚠️ WARNING: Multiple recent tool calls have failed. Consider proceeding without additional tool calls."
         elif recent_failures >= 2:
             tool_guidance = "\n⚠️ Note: Some recent tool calls failed. Be cautious about retrying the same tool."
         
         max_iterations_warning = ""
         if remaining_iterations <= 2:
-            max_iterations_warning = f"\n⚠️ IMPORTANT: You are approaching the maximum iteration limit ({remaining_iterations} remaining). Please provide your final review now, even if it's based on partial information. Use 'Final Answer:' to submit your review."
+            max_iterations_warning = f"\n⚠️ IMPORTANT: You are approaching the maximum iteration limit ({remaining_iterations} remaining). Please provide your final review now."
         
         prompt = f"""You are an autonomous code review expert. Your task is to review a Git PR diff and identify issues.
 
-                Current Context:
-                - PR Diff (first 1000 chars): {pr_diff[:1000]}
-                - Iteration: {iterations + 1}/{self.max_iterations}
-                - Remaining iterations: {remaining_iterations}
+            ## Current Context
 
-                Previous Observations:
-                {observations_text}
+            **PR Diff** (full content):
+            ```
+            {pr_diff[:1000]}
+            ```
 
-                Previous Tool Results:
-                {tool_results_text}
-                {tool_guidance}
-                {max_iterations_warning}
+            **Progress**: Iteration {iterations + 1}/{self.max_iterations} ({remaining_iterations} remaining)
 
-                Available Tools:
-                {available_tools}
+            ## Previous Observations
 
-                You have full autonomy to decide:
-                - Whether to use tools or not
-                - Which tools to use and when
-                - When you have enough information to provide your review
+            {observations_text}
 
-                You can use tools by responding in this format:
-                Action: tool_name
-                Action Input: {{"param1": "value1", "param2": "value2"}}
+            ## Previous Tool Results
 
-                Or if you're ready to provide the final review, respond with:
-                Final Answer: [Your comprehensive review with identified issues in JSON format: [{{"file": "path", "line": number, "severity": "error|warning|info", "message": "description", "suggestion": "optional suggestion"}}]]
+            {tool_results_text}
 
-                What would you like to do next?"""
+            {tool_guidance}
+            {max_iterations_warning}
+
+            ## Available Tools
+
+            {available_tools}
+
+            ## Instructions
+
+            1. Review the PR diff carefully - identify all changed files and understand what was modified.
+
+            2. Use tools strategically:
+            - Use `fetch_repo_map` to understand the repository structure (if needed)
+            - Use `read_file` to examine specific files mentioned in the diff
+            - Check previous tool results above - do NOT re-read files you've already examined
+
+            3. When you have enough information:
+            - Analyze the code changes for potential issues (bugs, security, performance, style, etc.)
+            - Provide your review using the format below
+
+            4. Response Format:
+
+            To use a tool:
+            ```
+            Action: tool_name
+            Action Input: {{"param": "value"}}
+            ```
+
+            To provide final review:
+            ```
+            Final Answer: [{{"file": "path/to/file.py", "line": 42, "severity": "error|warning|info", "message": "Issue description", "suggestion": "Optional fix suggestion"}}]
+            ```
+
+            ## What would you like to do next?"""
 
         # Get LLM response
         response = await self.llm_provider.generate(prompt, temperature=0.7)
+        
+        # Log model response to terminal
+        print(f"\n{'='*80}")
+        print(f"🤖 Agent Response (Iteration {iterations + 1}/{self.max_iterations})")
+        print(f"{'='*80}")
+        print(response)
+        print(f"{'='*80}\n")
         
         # Check if this is a final answer
         if "Final Answer:" in response or "final answer:" in response.lower():
@@ -273,8 +295,8 @@ class ReActAgent:
             else:
                 tool_failures = state.get("metadata", {}).get("agent_tool_failures", 0)
             
-            # Create observation
-            observation = f"Used {tool_name} with input {tool_input}. Result: {str(tool_result)[:2000]}"
+            # Create observation with full details
+            observation = f"Used {tool_name} with input {json.dumps(tool_input, ensure_ascii=False)}. Result: {json.dumps(tool_result, ensure_ascii=False, indent=2)}"
             
             return {
                 "metadata": {
@@ -364,10 +386,12 @@ def create_react_agent(config: Config) -> Any:
     # Initialize LLM provider
     llm_provider = LLMProvider(config.llm)
     
-    # Initialize tools
+    # Initialize tools with workspace root and asset key from config
+    workspace_root = config.system.workspace_root
+    asset_key = getattr(config.system, 'asset_key', None)
     tools = [
-        FetchRepoMapTool(),
-        ReadFileTool()
+        FetchRepoMapTool(asset_key=asset_key),
+        ReadFileTool(workspace_root=workspace_root)
     ]
     
     # Create agent

@@ -58,29 +58,57 @@ pip install openai
 
 ## Usage
 
-### Basic Usage
+### Command Line Interface
 
-Run the code review agent with a sample diff:
+The CLI supports two modes for getting diff content:
+
+#### Mode 1: Git Branch Mode (Recommended)
+
+Compare two Git branches using triple-dot syntax:
 
 ```bash
-python main.py
+# Compare feature-x branch with main
+python main.py --repo ./project --base main --head feature-x
+
+# Compare current HEAD with main (default head is HEAD)
+python main.py --repo ./project --base main
+```
+
+#### Mode 2: Local Diff File Mode
+
+Use a pre-generated diff file:
+
+```bash
+python main.py --repo ./project --diff ./changes.diff
 ```
 
 ### Command Line Options
 
+- `--repo` (required): Path to the repository to review
+- `--base`: Target branch for Git diff mode (e.g., 'main', 'master')
+- `--head`: Source branch or commit for Git diff mode (default: 'HEAD')
+- `--diff`: Path to a local .diff file (alternative to --base/--head)
+- `--output`: Path to save review results JSON (default: review_results.json)
+
+**Note**: If both `--diff` and `--base` are provided, `--diff` takes priority.
+
+### Example: Testing with Sentry Repository
+
 ```bash
-# Use default sample.diff
-python main.py
+# Git branch mode
+python main.py \
+  --repo /Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile \
+  --base performance-optimization-baseline \
+  --head performance-enhancement-complete
 
-# Specify a diff file
-python main.py --diff path/to/your.diff
-
-# Specify workspace root
-python main.py --workspace /path/to/project
-
-# Specify output file for results
-python main.py --diff changes.diff --output review.json
+# Or generate diff file first, then use file mode
+cd /Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile
+git diff performance-optimization-baseline...performance-enhancement-complete > /tmp/changes.diff
+cd /Users/wangyue/Code/CodeReview
+python main.py --repo /Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile --diff /tmp/changes.diff
 ```
+
+See [QUICK_START.md](QUICK_START.md) for more examples and VS Code debugging setup.
 
 ### Programmatic Usage
 

@@ -1,95 +1,109 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug: Main (Default Sample Diff)",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/main.py",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}"
-            },
-            "justMyCode": false
-        },
-        {
-            "name": "Debug: Main (Custom Diff File)",
+            "name": "Python: Code Review (Git Mode - Test Repo)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "args": [
-                "--diff",
-                "sample.diff",
-                "--output",
-                "review_results.json"
+                "--repo",
+                "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile",
+                "--base",
+                "performance-optimization-baseline",
+                "--head",
+                "performance-enhancement-complete"
             ],
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
-            },
-            "justMyCode": false
+            }
         },
         {
-            "name": "Debug: Main (With Workspace)",
+            "name": "Python: Code Review (Git Mode - Custom)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "args": [
-                "--diff",
-                "sample.diff",
-                "--workspace",
-                "${workspaceFolder}",
-                "--output",
-                "review_results.json"
+                "--repo",
+                "${input:repoPath}",
+                "--base",
+                "${input:baseBranch}",
+                "--head",
+                "${input:headBranch}"
             ],
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
-            },
-            "justMyCode": false
+            }
         },
         {
-            "name": "Debug: Current Python File",
+            "name": "Python: Code Review (Diff File Mode)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "${workspaceFolder}/main.py",
+            "args": [
+                "--repo",
+                "${input:repoPath}",
+                "--diff",
+                "${input:diffFile}"
+            ],
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
-            },
-            "justMyCode": true
+            }
         },
         {
-            "name": "Debug: Python Module",
+            "name": "Python: Code Review (Test Repo - Diff File)",
             "type": "debugpy",
             "request": "launch",
-            "module": "main",
+            "program": "${workspaceFolder}/main.py",
+            "args": [
+                "--repo",
+                "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile",
+                "--diff",
+                "${input:diffFilePath}"
+            ],
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
-            },
-            "justMyCode": false
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "repoPath",
+            "type": "promptString",
+            "description": "Enter repository path",
+            "default": "./project"
         },
         {
-            "name": "Debug: Test Current File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}",
-                "PYTHONUNBUFFERED": "1"
-            },
-            "justMyCode": true
+            "id": "baseBranch",
+            "type": "promptString",
+            "description": "Enter base branch (e.g., main, master)",
+            "default": "main"
+        },
+        {
+            "id": "headBranch",
+            "type": "promptString",
+            "description": "Enter head branch or commit",
+            "default": "HEAD"
+        },
+        {
+            "id": "diffFile",
+            "type": "promptString",
+            "description": "Enter path to diff file",
+            "default": "./sample.diff"
+        },
+        {
+            "id": "diffFilePath",
+            "type": "promptString",
+            "description": "Enter path to diff file (relative to repo or absolute)",
+            "default": "./changes.diff"
         }
     ]
 }

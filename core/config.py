@@ -37,11 +37,13 @@ class SystemConfig(BaseModel):
         workspace_root: Root path of the workspace.
         assets_dir: Directory for storing built assets.
         timeout_seconds: Maximum time for analysis (SLA: 10 minutes = 600 seconds).
+        asset_key: Optional asset key for repository-specific assets (e.g., repo_map).
     """
     
     workspace_root: Path = Field(default=Path.cwd(), description="Workspace root path")
     assets_dir: Path = Field(default=Path("assets_cache"), description="Assets cache directory")
     timeout_seconds: int = Field(default=600, description="Analysis timeout in seconds")
+    asset_key: Optional[str] = Field(default=None, description="Asset key for repository-specific assets")
 
 
 class Config(BaseModel):

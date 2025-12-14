@@ -119,10 +119,13 @@ class RepoMapBuilder(BaseAssetBuilder):
             "source_path": str(source_path)
         }
         
+        # Get asset key from kwargs, default to "repo_map" for backward compatibility
+        asset_key = kwargs.get("asset_key", "repo_map")
+        
         # Save to DAO (idempotent - will overwrite if exists)
         storage = get_storage()
         await storage.connect()
-        await storage.save("assets", "repo_map", asset_data)
+        await storage.save("assets", asset_key, asset_data)
         
         return asset_data
     
