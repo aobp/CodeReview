@@ -11,6 +11,8 @@ from util.logger import save_observations_to_log
 from util.git_utils import (
     get_git_info,
     get_git_diff,
+    get_changed_files,
+    extract_files_from_diff,
     generate_asset_key,
     get_repo_name,
 )
@@ -27,6 +29,8 @@ __all__ = [
     "save_observations_to_log",
     "get_git_info",
     "get_git_diff",
+    "get_changed_files",
+    "extract_files_from_diff",
     "generate_asset_key",
     "get_repo_name",
     "load_diff_from_file",

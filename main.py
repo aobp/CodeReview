@@ -13,11 +13,13 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
+
 from core.config import Config
 from dao.factory import get_storage
 from assets.implementations.repo_map import RepoMapBuilder
 from agents.bot import run_react_agent
+from external_tools.syntax_checker import CheckerFactory
 from util import (
     generate_asset_key,
     get_git_info,
@@ -25,7 +27,81 @@ from util import (
     print_review_results,
     validate_repo_path,
 )
+from util.git_utils import extract_files_from_diff, get_changed_files
 
+async def run_syntax_checking(
+    repo_path: Path,
+    pr_diff: str,
+    args: argparse.Namespace
+) -> List[dict]:
+    """Run syntax/lint checking on changed files.
+    
+    This function determines which files have changed (either from Git or from diff),
+    then runs appropriate syntax checkers on those files.
+    
+    Args:
+        repo_path: Root path of the repository.
+        pr_diff: The Git diff content.
+        args: Parsed command line arguments.
+    
+    Returns:
+        List of linting errors as dictionaries. Each error has keys:
+        file, line, message, severity, code.
+    """
+    try:
+        # Determine changed files
+        if args.diff:
+            # Mode: --diff-file - extract files from diff content
+            changed_files = extract_files_from_diff(pr_diff)
+        elif args.base:
+            # Mode: Git branches - use git command
+            try:
+                changed_files = get_changed_files(repo_path, args.base, args.head)
+            except Exception as e:
+                print(f"  ⚠️  Warning: Could not get changed files from Git: {e}")
+                # Fallback: try to extract from diff
+                changed_files = extract_files_from_diff(pr_diff)
+        else:
+            # Should not happen (validated earlier), but handle gracefully
+            changed_files = []
+        
+        if not changed_files:
+            return []
+        
+        # Group files by checker
+        checker_groups = CheckerFactory.get_checkers_for_files(changed_files)
+        
+        if not checker_groups:
+            return []
+        
+        # Run all checkers
+        all_errors = []
+        for checker_class, files in checker_groups.items():
+            try:
+                checker = checker_class()
+                errors = await checker.check(repo_path, files)
+                # Convert LintError objects to dictionaries
+                all_errors.extend([
+                    {
+                        "file": error.file,
+                        "line": error.line,
+                        "message": error.message,
+                        "severity": error.severity,
+                        "code": error.code
+                    }
+                    for error in errors
+                ])
+            except Exception as e:
+                # Gracefully handle checker failures
+                print(f"  ⚠️  Warning: {checker_class.__name__} failed: {e}")
+                continue
+        
+        return all_errors
+    
+    except Exception as e:
+        # Gracefully handle any errors in syntax checking
+        print(f"  ⚠️  Warning: Syntax checking failed: {e}")
+        return []
 
 
 async def build_repo_map_if_needed(
@@ -81,8 +157,6 @@ async def build_repo_map_if_needed(
         # Continue anyway - agent can still work without repo map
         # Return a fallback key
         return generate_asset_key(workspace_root, branch, commit)
-
-
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -181,6 +255,28 @@ async def main():
     # Store asset_key in config for tools to use
     config.system.asset_key = asset_key
     
+    # Step 2.5: Run Pre-Agent Syntax/Lint Checking
+    print("\n🔍 Running pre-agent syntax/lint checking...")
+    lint_errors = await run_syntax_checking(
+        repo_path=repo_path,
+        pr_diff=pr_diff,
+        args=args
+    )
+    
+    if lint_errors:
+        print(f"  ⚠️  Found {len(lint_errors)} linting error(s):")
+        for error in lint_errors[:10]:  # Show first 10
+            file_path = error.get("file", "unknown")
+            line = error.get("line", 0)
+            message = error.get("message", "")
+            severity = error.get("severity", "error")
+            icon = {"error": "❌", "warning": "⚠️", "info": "ℹ️"}.get(severity, "•")
+            print(f"    {icon} {file_path}:{line} - {message}")
+        if len(lint_errors) > 10:
+            print(f"    ... and {len(lint_errors) - 10} more")
+    else:
+        print("  ✅ No linting errors found")
+    
     # Step 3 & 4: Initialize and Run Autonomous ReAct Agent
     print("\n🤖 Initializing autonomous ReAct agent...")
     print("  → Agent will autonomously:")
@@ -188,7 +284,8 @@ async def main():
     try:
         results = await run_react_agent(
             pr_diff=pr_diff,
-            config=config
+            config=config,
+            lint_errors=lint_errors
         )
         
         # Print results

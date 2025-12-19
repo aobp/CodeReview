@@ -403,13 +403,15 @@ def create_react_agent(config: Config) -> Any:
 
 async def run_react_agent(
     pr_diff: str,
-    config: Config = None
+    config: Config = None,
+    lint_errors: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """Run the ReAct agent for code review.
     
     Args:
         pr_diff: The raw Git diff string from the PR.
         config: Optional configuration object. If None, uses default config.
+        lint_errors: Optional list of linting errors from pre-agent syntax checking.
     
     Returns:
         A dictionary containing the final state with review results.
@@ -427,6 +429,7 @@ async def run_react_agent(
         "repo_map_summary": "",  # Will be fetched by agent via tool
         "focus_files": [],
         "identified_issues": [],
+        "lint_errors": lint_errors or [],
         "metadata": {
             "workflow_version": "react_autonomous",
             "config_provider": config.llm.provider,

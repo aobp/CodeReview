@@ -19,6 +19,7 @@ class ReviewState(TypedDict, total=False):
         repo_map_summary: A summary of the repository structure (from RepoMap asset).
         focus_files: List of file paths that the manager identified as needing review.
         identified_issues: List of review comments/issues found by the reviewer.
+        lint_errors: List of linting errors from pre-agent syntax checking.
         worklist: Optional worklist of tasks for the agent (for future extensibility).
         metadata: Optional dictionary for storing additional workflow metadata.
     """
@@ -27,6 +28,7 @@ class ReviewState(TypedDict, total=False):
     repo_map_summary: str
     focus_files: List[str]
     identified_issues: List[Dict[str, Any]]
+    lint_errors: List[Dict[str, Any]]
     worklist: Optional[List[Dict[str, Any]]]
     metadata: Optional[Dict[str, Any]]
 

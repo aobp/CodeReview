@@ -1,9 +1,10 @@
 """Git repository utilities for branch, commit, and diff operations."""
 
 import hashlib
+import re
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 def get_git_info(repo_path: Path, ref: str = "HEAD") -> Tuple[Optional[str], Optional[str]]:
@@ -44,6 +45,68 @@ def get_git_info(repo_path: Path, ref: str = "HEAD") -> Tuple[Optional[str], Opt
         return (branch, commit_hash)
     except (subprocess.CalledProcessError, FileNotFoundError):
         return (None, None)
+
+
+def get_changed_files(repo_path: Path, base: str, head: str = "HEAD") -> List[str]:
+    """Get list of changed files between two Git references.
+    
+    This function executes `git diff --name-only {base}...{head}` to get
+    the list of files that have been changed between the two references.
+    
+    Args:
+        repo_path: Path to the Git repository.
+        base: Target branch (e.g., "main", "master").
+        head: Source branch or commit (default: "HEAD").
+    
+    Returns:
+        A list of file paths relative to the repository root.
+        Returns empty list if no changes or if not a Git repository.
+    
+    Raises:
+        ValueError: If repo_path is not a valid Git repository.
+    """
+    repo_path = Path(repo_path).resolve()
+    
+    if not repo_path.exists():
+        raise ValueError(f"Repository path does not exist: {repo_path}")
+    
+    if not repo_path.is_dir():
+        raise ValueError(f"Repository path must be a directory: {repo_path}")
+    
+    # Check if it's a Git repository
+    git_dir = repo_path / ".git"
+    if not git_dir.exists():
+        try:
+            subprocess.run(
+                ["git", "rev-parse", "--git-dir"],
+                cwd=repo_path,
+                capture_output=True,
+                check=True
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            raise ValueError(f"Not a Git repository: {repo_path}")
+    
+    try:
+        # Execute git diff --name-only with triple-dot syntax
+        result = subprocess.run(
+            ["git", "diff", "--name-only", f"{base}...{head}"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8"
+        )
+        # Filter out empty lines and return list of file paths
+        files = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+        return files
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.strip() if e.stderr else "Unknown git error"
+        if "fatal:" in error_msg.lower() or "error:" in error_msg.lower():
+            raise ValueError(f"Git diff failed: {error_msg}")
+        else:
+            raise ValueError(f"Git diff failed: {error_msg}")
+    except FileNotFoundError:
+        raise ValueError("Git is not installed or not in PATH")
 
 
 def get_git_diff(repo_path: Path, base: str, head: str = "HEAD") -> str:
@@ -146,6 +209,55 @@ def generate_asset_key(repo_path: Path, branch: Optional[str] = None, commit: Op
         key = f"repo_map_{repo_name}_{key_hash}"
     
     return key
+
+
+def extract_files_from_diff(diff_content: str) -> List[str]:
+    """Extract file paths from a Git diff string.
+    
+    This function parses a Git diff to extract the list of files that were changed.
+    It handles both unified diff format (---/+++) and rename/copy operations.
+    
+    Args:
+        diff_content: The Git diff content as a string.
+    
+    Returns:
+        A list of unique file paths found in the diff. Paths are relative to the
+        repository root (as they appear in the diff).
+    """
+    if not diff_content or not diff_content.strip():
+        return []
+    
+    files = set()
+    lines = diff_content.split("\n")
+    
+    for line in lines:
+        # Match unified diff format: --- a/path/to/file or +++ b/path/to/file
+        # Also match: --- /dev/null or +++ /dev/null (for new/deleted files)
+        if line.startswith("--- ") or line.startswith("+++ "):
+            # Extract the file path (remove prefix like "a/" or "b/")
+            path_part = line[4:].strip()
+            # Skip /dev/null entries
+            if path_part == "/dev/null":
+                continue
+            # Remove "a/" or "b/" prefix if present
+            if path_part.startswith("a/") or path_part.startswith("b/"):
+                path_part = path_part[2:]
+            # Remove leading slash if present
+            if path_part.startswith("/"):
+                path_part = path_part[1:]
+            if path_part:
+                files.add(path_part)
+        
+        # Also match rename/copy operations: rename from/to
+        rename_match = re.match(r"^rename from (.+)$", line)
+        if rename_match:
+            files.add(rename_match.group(1))
+        
+        rename_to_match = re.match(r"^rename to (.+)$", line)
+        if rename_to_match:
+            files.add(rename_to_match.group(1))
+    
+    return sorted(list(files))
 
 
 def get_repo_name(workspace_root: Path) -> str:
