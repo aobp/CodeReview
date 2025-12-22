@@ -10,7 +10,7 @@
                 "--repo",
                 "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile",
                 "--base",
-                "master",
+                "performance-optimization-baseline",
                 "--head",
                 "performance-enhancement-complete"
             ],
