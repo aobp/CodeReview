@@ -16,6 +16,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from core.state import ReviewState, RiskItem, RiskType, WorkListResponse
 from core.langchain_llm import LangChainLLMAdapter
 from agents.prompts import render_prompt_template
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ async def manager_node(state: ReviewState) -> Dict[str, Any]:
     
     print(f"  📥 接收文件分析: {len(file_analyses)} 个")
     
-        try:
+    try:
         work_list = []
         grouped = defaultdict(list)
         for file_analyse in file_analyses:
