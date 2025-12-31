@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 *.pyc
+review_results.json
 
 # Project-specific
 .storage/
