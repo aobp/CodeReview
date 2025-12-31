@@ -1,11 +1,9 @@
-"""Repository map builder implementation.
+"""仓库地图构建器实现。
 
-This module implements a RepoMapBuilder that generates a file tree representation
-of the codebase. For MVP, this is a simplified version that doesn't use tree-sitter
-yet, but provides the interface for future enhancement.
+实现 RepoMapBuilder，生成代码库的文件树表示。
+对于 MVP，这是简化版本，尚未使用 tree-sitter，但为未来增强提供了接口。
 
-The builder now uses the DAO layer for persistence, making it idempotent and
-preparing for future database backends.
+构建器现在使用 DAO 层进行持久化，使其幂等并为未来的数据库后端做准备。
 """
 
 import os
@@ -16,25 +14,15 @@ from dao.factory import get_storage
 
 
 class RepoMapBuilder(BaseAssetBuilder):
-    """Builder for generating repository map assets.
+    """生成仓库地图资产的构建器。
     
-    The RepoMap represents the structure of the codebase as a file tree.
-    For MVP, this implementation simply traverses the directory and generates
-    a text representation. Future versions will use tree-sitter for AST analysis.
-    
-    Attributes:
-        asset_type: Always "repo_map" for this builder.
-        supported_extensions: List of file extensions to include in the map.
+    RepoMap 将代码库的结构表示为文件树。
+    对于 MVP，此实现仅遍历目录并生成文本表示。
+    未来版本将使用 tree-sitter 进行 AST 分析。
     """
     
     def __init__(self, asset_type: str = "repo_map", supported_extensions: List[str] = None):
-        """Initialize the RepoMapBuilder.
-        
-        Args:
-            asset_type: The asset type identifier (default: "repo_map").
-            supported_extensions: List of file extensions to include (e.g., [".py", ".js"]).
-                                 If None, includes common code file extensions.
-        """
+        """初始化 RepoMapBuilder。"""
         super().__init__(asset_type)
         if supported_extensions is None:
             self.supported_extensions = [".py", ".js", ".ts", ".go", ".java", ".cpp", ".c", ".h"]
@@ -42,23 +30,10 @@ class RepoMapBuilder(BaseAssetBuilder):
             self.supported_extensions = supported_extensions
     
     async def build(self, source_path: Path, **kwargs: Any) -> Dict[str, Any]:
-        """Build the repository map from the source directory and save to DAO.
+        """从源目录构建仓库地图并保存到 DAO。
         
-        This method traverses the directory structure and generates a file tree
-        representation. The result is automatically saved to the DAO layer.
-        This method is idempotent - calling it multiple times will overwrite
-        the previous data.
-        
-        Args:
-            source_path: Path to the source code directory.
-            **kwargs: Additional parameters (e.g., max_depth, exclude_patterns).
-        
-        Returns:
-            A dictionary containing:
-                - "file_tree": A string representation of the file tree.
-                - "file_count": Total number of files included.
-                - "files": List of file paths relative to source_path.
-                - "source_path": The resolved source path.
+        此方法遍历目录结构并生成文件树表示。
+        结果自动保存到 DAO 层。此方法是幂等的——多次调用将覆盖先前的数据。
         """
         source_path = Path(source_path).resolve()
         if not source_path.exists():

@@ -1,11 +1,6 @@
-"""Utility modules for code review agent.
+"""代码审查智能体工具模块。
 
-This package contains utility functions for:
-- Logging: Agent observations and tool results
-- Git operations: Repository information and diff generation
-- PR processing: Result formatting
-- Argument validation: Command line argument validation and diff loading
-- Diff parsing: Git diff parsing with line number mapping
+包含日志、Git 操作、PR 处理、参数验证、Diff 解析等功能。
 """
 
 from util.logger import save_observations_to_log

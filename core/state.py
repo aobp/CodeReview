@@ -1,11 +1,6 @@
-"""State definitions for the LangGraph workflow.
+"""LangGraph 工作流状态定义。
 
-This module defines the ReviewState TypedDict that is passed between nodes
-in the LangGraph workflow.
-
-重构说明：
-- 添加 messages 字段，使用 Annotated[list, add_messages] 来管理消息历史
-- 这是 LangGraph 标准做法，用于在节点间传递对话历史
+定义 ReviewState TypedDict，用于在节点间传递状态。
 """
 
 from typing import TypedDict, List, Dict, Any, Optional, Annotated, Literal, Tuple
@@ -17,16 +12,7 @@ import operator
 
 
 class RiskType(str, Enum):
-    """Types of risks that can be identified in code review.
-    
-    风险分类体系：
-    - NULL_SAFETY: 空值陷阱与边界防御 (Null Safety & Boundary Defense)
-    - CONCURRENCY: 并发竞争与异步时序 (Concurrency & Async Timing)
-    - SECURITY: 安全漏洞与敏感数据 (Security & Authorization)
-    - BUSINESS_INTENT: 业务意图与功能对齐 (Business Intent & Functional Alignment)
-    - LIFECYCLE: 生命周期与状态副作用 (Lifecycle, State & Side Effects)
-    - SYNTAX: 语法与静态分析 (Syntax & Static Analysis)
-    """
+    """代码审查风险类型。"""
     NULL_SAFETY = "null_safety"  # 第二类：空值陷阱与边界防御
     CONCURRENCY = "concurrency"  # 第三类：并发竞争与异步时序
     SECURITY = "security"  # 第四类：安全漏洞与敏感数据
@@ -36,17 +22,9 @@ class RiskType(str, Enum):
 
 
 class RiskItem(BaseModel):
-    """Represents a single risk item identified during code review.
+    """代码审查中识别的单个风险项。
     
-    Attributes:
-        risk_type: The type of risk (security, performance, etc.).
-        file_path: Path to the file where the risk was identified.
-        line_number: Line number range where the risk occurs (start_line, end_line), both 1-indexed.
-                     Must always be provided as [start, end]. For single-line issues, use [line, line].
-        description: Description of the risk.
-        confidence: Confidence score (0.0 to 1.0).
-        severity: Severity level ("error", "warning", "info").
-        suggestion: Optional suggestion for fixing the risk.
+    line_number: 行号范围 [start, end]，从 1 开始。单行问题使用 [line, line]。
     """
     risk_type: RiskType = Field(..., description="Type of risk")
     file_path: str = Field(..., description="File path where risk was identified")
@@ -59,20 +37,12 @@ class RiskItem(BaseModel):
     @field_validator('line_number', mode='before')
     @classmethod
     def normalize_line_number(cls, v: Any) -> Tuple[int, int]:
-        """Normalize line_number to a tuple (start_line, end_line).
+        """规范化行号为元组 (start_line, end_line)。
         
-        Requires:
-        - List/tuple of exactly 2 integers: [start, end] or (start, end)
-        - Single integer is NOT supported - must always provide a range
-        
-        Args:
-            v: Input value, must be a list/tuple of 2 integers.
-        
-        Returns:
-            Tuple of (start_line, end_line).
+        要求：必须是包含 2 个整数的列表/元组 [start, end]。
         
         Raises:
-            ValueError: If input is not a list/tuple of 2 integers.
+            ValueError: 输入格式不正确。
         """
         if isinstance(v, (list, tuple)):
             if len(v) == 2:
@@ -100,14 +70,7 @@ class RiskItem(BaseModel):
 
 
 class FileAnalysis(BaseModel):
-    """Represents the analysis result for a single file.
-    
-    Attributes:
-        file_path: Path to the analyzed file.
-        intent_summary: Summary of the file's purpose and changes.
-        potential_risks: List of potential risks identified.
-        complexity_score: Optional complexity score (0-100).
-    """
+    """单个文件的分析结果。"""
     file_path: str = Field(..., description="Path to the analyzed file")
     intent_summary: str = Field(..., description="Summary of file's purpose and changes")
     potential_risks: List[RiskItem] = Field(default_factory=list, description="Potential risks identified")
@@ -115,43 +78,14 @@ class FileAnalysis(BaseModel):
 
 
 class WorkListResponse(BaseModel):
-    """Manager node 的输出响应模型。
-    
-    重构说明：
-    - 使用 PydanticOutputParser 解析 Manager 节点的输出
-    - 确保类型安全和自动验证
-    
-    Attributes:
-        work_list: List of risk items that need expert review.
-    """
+    """Manager 节点的输出响应模型。"""
     work_list: List[RiskItem] = Field(..., description="List of risk items for expert review")
 
 
 class ReviewState(TypedDict, total=False):
-    """State object passed through the LangGraph workflow.
+    """LangGraph 工作流状态对象。
     
-    重构说明：
-    1. 添加 messages 字段：使用 Annotated[list, add_messages] 来管理消息历史
-       这是 LangGraph 标准做法，用于在节点间传递对话历史，支持消息追加而非重写
-    2. 保持向后兼容：保留原有的业务字段，同时添加标准化的消息管理
-    
-    This TypedDict defines all possible state keys that can be used in the
-    code review workflow. Keys are optional (total=False) to allow incremental
-    state updates.
-    
-    Attributes:
-        messages: 消息历史列表，使用 add_messages 进行追加操作（LangGraph 标准）
-        diff_context: The raw Git diff string from the PR.
-        changed_files: List of file paths that were changed in the PR.
-        file_analyses: Map-Reduce result for intent analysis (List of FileAnalysis).
-        work_list: Manager's output, tasks for experts (List of RiskItem).
-        expert_tasks: Grouped work_list items by RiskType for parallel execution.
-        expert_results: Store results from each expert group.
-        confirmed_issues: Final confirmed issues (uses operator.add for accumulation).
-        final_report: Final review report string.
-        repo_map_summary: A summary of the repository structure (from RepoMap asset).
-        lint_errors: List of linting errors from pre-agent syntax checking.
-        metadata: Optional dictionary for storing additional workflow metadata.
+    所有键都是可选的（total=False），支持增量更新。
     """
     
     # LangGraph 标准：消息历史管理（必须）

@@ -1,7 +1,4 @@
-"""File reading tools for the code review system.
-
-This module provides tools for reading and analyzing files in the codebase.
-"""
+"""代码审查系统的文件读取工具。"""
 
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -10,11 +7,7 @@ from tools.base import BaseTool
 
 
 class ReadFileTool(BaseTool):
-    """Tool for reading file contents.
-    
-    This tool reads the contents of a file and returns it along with metadata.
-    It's used by agents to examine code files during the review process.
-    """
+    """文件读取工具。"""
     
     workspace_root: Optional[Path] = Field(
         default=None,
@@ -22,12 +15,7 @@ class ReadFileTool(BaseTool):
     )
     
     def __init__(self, workspace_root: Optional[Path] = None, **kwargs):
-        """Initialize the ReadFileTool.
-        
-        Args:
-            workspace_root: Root path of the workspace. If None, uses current working directory.
-            **kwargs: Additional arguments passed to BaseTool.
-        """
+        """初始化文件读取工具。"""
         if workspace_root is None:
             workspace_root = Path.cwd()
         super().__init__(
@@ -38,16 +26,10 @@ class ReadFileTool(BaseTool):
         )
     
     async def run(self, file_path: str, **kwargs: Any) -> Dict[str, Any]:
-        """Read a file and return its contents.
-        
-        Args:
-            file_path: Path to the file to read (relative to workspace root or absolute).
-            **kwargs: Additional parameters (e.g., max_lines, encoding).
+        """读取文件并返回内容。
         
         Returns:
-            A dictionary containing:
-                - "content": The file contents as a string.
-                - "file_path": The resolved file path.
+            包含 "content" 和 "file_path" 的字典。
                 - "line_count": Number of lines in the file.
                 - "encoding": The encoding used.
                 - "error": Optional error message if reading failed.

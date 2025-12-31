@@ -1,7 +1,7 @@
-"""Expert Execution Node for the code review workflow.
+"""代码审查工作流的专家执行节点。
 
-This node handles parallel execution of expert agents with concurrency control.
-Each expert group processes tasks of a specific risk type concurrently.
+处理专家智能体的并行执行（并发控制）。
+每个专家组并发处理特定风险类型的任务。
 """
 
 import asyncio
@@ -21,14 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def format_line_number(line_number: tuple[int, int]) -> str:
-    """Format line number range as a string.
-    
-    Args:
-        line_number: Tuple of (start_line, end_line).
-    
-    Returns:
-        Formatted string: "10:15" for range, "10" for single line.
-    """
+    """格式化行号范围为字符串（"10:15" 或 "10"）。"""
     start_line, end_line = line_number
     if start_line == end_line:
         return str(start_line)
@@ -37,19 +30,10 @@ def format_line_number(line_number: tuple[int, int]) -> str:
 
 
 async def expert_execution_node(state: ReviewState) -> Dict[str, Any]:
-    """Execute expert agents in parallel with concurrency control.
-    
-    This node:
-    1. Receives expert_tasks grouped by risk_type
-    2. For each risk_type, runs expert group in parallel
-    3. Uses semaphore to limit concurrent LLM requests
-    4. Collects results into expert_results
-    
-    Args:
-        state: Current workflow state with expert_tasks.
+    """并行执行专家智能体（并发控制）。
     
     Returns:
-        Dictionary with 'expert_results' key.
+        包含 'expert_results' 键的字典。
     """
     print("\n" + "="*80)
     print("🔬 [节点3] Expert Execution - 并行执行专家组")

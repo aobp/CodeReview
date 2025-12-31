@@ -1,4 +1,4 @@
-"""Factory for creating syntax checkers based on file extensions."""
+"""基于文件扩展名创建语法检查器的工厂。"""
 
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -7,11 +7,10 @@ from external_tools.syntax_checker.base import BaseSyntaxChecker
 
 
 class CheckerFactory:
-    """Factory class for selecting and creating appropriate syntax checkers.
+    """选择和创建适当语法检查器的工厂类。
     
-    This factory maintains a registry of checkers and selects the appropriate
-    checker based on file extensions. It supports multiple checkers for the same
-    language (e.g., ruff and pylint for Python).
+    此工厂维护检查器注册表，并根据文件扩展名选择适当的检查器。
+    支持同一语言的多个检查器（如 Python 的 ruff 和 pylint）。
     """
     
     _checkers: Dict[str, type[BaseSyntaxChecker]] = {}
@@ -23,12 +22,7 @@ class CheckerFactory:
         checker_class: type[BaseSyntaxChecker],
         extensions: List[str]
     ) -> None:
-        """Register a syntax checker for specific file extensions.
-        
-        Args:
-            checker_class: The checker class to register.
-            extensions: List of file extensions (e.g., [".py", ".pyi"]).
-        """
+        """为特定文件扩展名注册语法检查器。"""
         cls._checkers[checker_class.__name__] = checker_class
         for ext in extensions:
             # Normalize extension (ensure it starts with .)
@@ -45,13 +39,10 @@ class CheckerFactory:
         cls,
         file_path: str
     ) -> List[type[BaseSyntaxChecker]]:
-        """Get all appropriate checker classes for a file.
-        
-        Args:
-            file_path: Path to the file (can be relative or absolute).
+        """获取文件的所有适当检查器类。
         
         Returns:
-            List of checker classes for this file. Returns empty list if no checkers registered.
+            此文件的检查器类列表。如果未注册检查器，返回空列表。
         """
         path = Path(file_path)
         ext = path.suffix.lower()
@@ -62,14 +53,7 @@ class CheckerFactory:
         cls,
         file_path: str
     ) -> Optional[type[BaseSyntaxChecker]]:
-        """Get the first appropriate checker class for a file (for backward compatibility).
-        
-        Args:
-            file_path: Path to the file (can be relative or absolute).
-        
-        Returns:
-            The first checker class for this file, or None if no checker is registered.
-        """
+        """获取文件的第一个适当检查器类（向后兼容）。"""
         checkers = cls.get_checkers_for_file(file_path)
         return checkers[0] if checkers else None
     
@@ -78,14 +62,11 @@ class CheckerFactory:
         cls,
         files: List[str]
     ) -> Dict[type[BaseSyntaxChecker], List[str]]:
-        """Group files by their appropriate checkers.
-        
-        Args:
-            files: List of file paths to check.
+        """按适当的检查器对文件进行分组。
         
         Returns:
-            Dictionary mapping checker classes to lists of files they should check.
-            Multiple checkers can check the same file if registered for the same extension.
+            将检查器类映射到应检查的文件列表的字典。
+            如果为同一扩展名注册了多个检查器，多个检查器可以检查同一文件。
         """
         grouped: Dict[type[BaseSyntaxChecker], List[str]] = {}
         
@@ -100,9 +81,5 @@ class CheckerFactory:
     
     @classmethod
     def get_all_checkers(cls) -> Dict[str, type[BaseSyntaxChecker]]:
-        """Get all registered checkers.
-        
-        Returns:
-            Dictionary mapping checker names to checker classes.
-        """
+        """获取所有已注册的检查器。"""
         return cls._checkers.copy()

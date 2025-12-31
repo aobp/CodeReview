@@ -1,4 +1,4 @@
-"""PR (Pull Request) processing utilities for diff loading and result formatting."""
+"""PR（拉取请求）处理工具，用于 diff 加载和结果格式化。"""
 
 from pathlib import Path
 from typing import Optional
@@ -9,17 +9,11 @@ from util.logger import save_observations_to_log
 
 
 def load_diff_from_file(file_path: Path) -> str:
-    """Load Git diff from a file.
-    
-    Args:
-        file_path: Path to the diff file.
-    
-    Returns:
-        The diff content as a string.
+    """从文件加载 Git diff。
     
     Raises:
-        FileNotFoundError: If the file doesn't exist.
-        IOError: If the file cannot be read.
+        FileNotFoundError: 文件不存在。
+        IOError: 文件无法读取。
     """
     file_path = Path(file_path).resolve()
     
@@ -34,13 +28,7 @@ def load_diff_from_file(file_path: Path) -> str:
 
 
 def print_review_results(results: dict, workspace_root: Optional[Path] = None, config: Optional[Config] = None) -> None:
-    """Print the review results in a formatted way.
-    
-    Args:
-        results: The final state dictionary from the workflow.
-        workspace_root: Optional workspace root path for log saving.
-        config: Optional configuration object for log saving.
-    """
+    """以格式化方式打印审查结果。"""
     print("\n" + "=" * 80)
     print("CODE REVIEW RESULTS")
     print("=" * 80)

@@ -1,11 +1,11 @@
-"""Main entry point for the AI Code Review Agent.
+"""AI 代码审查系统主入口。
 
-This script demonstrates the complete workflow:
-1. Initialize Storage (DAO layer)
-2. Build Assets (RepoMap) if needed
-3. Initialize Autonomous ReAct Agent
-4. Run the agent workflow
-5. Display review results
+工作流程：
+1. 初始化存储（DAO 层）
+2. 构建资产（RepoMap，如需要）
+3. 初始化多智能体工作流
+4. 执行工作流
+5. 显示审查结果
 """
 
 
@@ -34,13 +34,13 @@ from util.git_utils import extract_files_from_diff, get_changed_files
 
 
 def _make_serializable(obj: dict) -> dict:
-    """Remove non-serializable objects from dictionary (e.g., LLMProvider, Config, tools).
+    """移除字典中的不可序列化对象（如 LLMProvider、Config、tools）。
     
     Args:
-        obj: Dictionary that may contain non-serializable objects.
+        obj: 可能包含不可序列化对象的字典。
     
     Returns:
-        Dictionary with only serializable values.
+        仅包含可序列化值的字典。
     """
     if not isinstance(obj, dict):
         return obj
@@ -95,19 +95,15 @@ async def run_syntax_checking(
     pr_diff: str,
     args: argparse.Namespace
 ) -> List[dict]:
-    """Run syntax/lint checking on changed files.
-    
-    This function determines which files have changed from Git,
-    then runs appropriate syntax checkers on those files.
+    """对变更文件执行语法/静态检查。
     
     Args:
-        repo_path: Root path of the repository.
-        pr_diff: The Git diff content.
-        args: Parsed command line arguments.
+        repo_path: 仓库根路径。
+        pr_diff: Git diff 内容。
+        args: 命令行参数。
     
     Returns:
-        List of linting errors as dictionaries. Each error has keys:
-        file, line, message, severity, code.
+        检查错误列表，每个错误包含：file, line, message, severity, code。
     """
     try:
         # Get changed files from Git
@@ -166,19 +162,15 @@ async def build_repo_map_if_needed(
     branch: Optional[str] = None,
     commit: Optional[str] = None
 ) -> str:
-    """Build repository map if it doesn't exist in storage.
-    
-    This function checks if the repo_map asset exists in the DAO layer for the
-    specific repository, branch, and commit combination. If it doesn't exist, it
-    builds and saves it. The build process is idempotent.
+    """如需要则构建仓库地图（幂等操作）。
     
     Args:
-        workspace_root: Root directory of the workspace.
-        branch: Git branch name (optional). If None, will try to detect from Git.
-        commit: Git commit hash (optional). If None, will try to detect from Git.
+        workspace_root: 工作区根目录。
+        branch: Git 分支名（可选，未提供则从 Git 检测）。
+        commit: Git 提交哈希（可选，未提供则从 Git 检测）。
     
     Returns:
-        The asset key used for storage.
+        用于存储的资产键。
     """
     try:
         # Try to get Git info if not provided
@@ -217,10 +209,10 @@ async def build_repo_map_if_needed(
 
 
 def parse_arguments() -> argparse.Namespace:
-    """Parse command line arguments.
+    """解析命令行参数。
     
     Returns:
-        Parsed arguments namespace.
+        解析后的参数命名空间。
     """
     parser = argparse.ArgumentParser(
         description="AI Code Review Agent - Analyze Git PR diffs using LLM agents",
@@ -267,7 +259,7 @@ def parse_arguments() -> argparse.Namespace:
 
 
 async def main():
-    """Main entry point for the code review agent."""
+    """代码审查系统主入口。"""
     args = parse_arguments()
     
     print("🚀 AI Code Review Agent - MVP")

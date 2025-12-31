@@ -1,7 +1,6 @@
-"""LLM provider abstraction for the code review system.
+"""LLM 提供商抽象层。
 
-This module provides a unified interface for LLM providers, with a mock
-implementation for testing without API keys.
+提供统一的 LLM 接口，包含用于测试的 mock 实现。
 """
 
 from typing import Any, Dict, List, Optional
@@ -9,32 +8,16 @@ from core.config import LLMConfig
 
 
 class LLMProvider:
-    """Abstract interface for LLM providers.
-    
-    This class provides a unified interface for different LLM providers.
-    For MVP, it includes a mock implementation that can be used for testing.
-    """
+    """LLM 提供商统一接口。"""
     
     def __init__(self, config: LLMConfig):
-        """Initialize the LLM provider.
-        
-        Args:
-            config: LLM configuration object.
-        """
+        """初始化 LLM 提供商。"""
         self.config = config
         self.provider = config.provider
         self.model = config.model
     
     async def generate(self, prompt: str, **kwargs: Any) -> str:
-        """Generate a response from the LLM.
-        
-        Args:
-            prompt: The input prompt string.
-            **kwargs: Additional parameters (e.g., temperature, max_tokens).
-        
-        Returns:
-            The generated response string.
-        """
+        """生成 LLM 响应。"""
         if self.provider == "mock":
             return await self._mock_generate(prompt, **kwargs)
         elif self.provider == "openai":
@@ -45,19 +28,7 @@ class LLMProvider:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
     
     async def _mock_generate(self, prompt: str, **kwargs: Any) -> str:
-        """Mock LLM implementation for testing.
-        
-        This method simulates LLM responses without making actual API calls.
-        It provides basic pattern matching to return contextually appropriate
-        mock responses.
-        
-        Args:
-            prompt: The input prompt string.
-            **kwargs: Additional parameters (ignored in mock mode).
-        
-        Returns:
-            A mock response string.
-        """
+        """Mock LLM 实现（用于测试）。"""
         prompt_lower = prompt.lower()
         
         # Pattern matching for different types of prompts
@@ -99,21 +70,11 @@ class LLMProvider:
             return "Mock LLM response: I understand your request. This is a placeholder response for testing purposes."
     
     async def _openai_generate(self, prompt: str, **kwargs: Any) -> str:
-        """OpenAI LLM implementation.
-        
-        This method makes actual API calls to OpenAI. It requires an API key
-        to be set in the config.
-        
-        Args:
-            prompt: The input prompt string.
-            **kwargs: Additional parameters (e.g., temperature, max_tokens).
-        
-        Returns:
-            The generated response string from OpenAI.
+        """OpenAI LLM 实现。
         
         Raises:
-            ValueError: If API key is not configured.
-            Exception: If the API call fails.
+            ValueError: API 密钥未配置。
+            Exception: API 调用失败。
         """
         try:
             import openai
@@ -142,22 +103,11 @@ class LLMProvider:
             raise Exception(f"OpenAI API call failed: {str(e)}")
     
     async def _deepseek_generate(self, prompt: str, **kwargs: Any) -> str:
-        """DeepSeek LLM implementation.
-        
-        DeepSeek uses OpenAI-compatible API, so we can use the same client.
-        This method makes actual API calls to DeepSeek. It requires an API key
-        to be set in the config or DEEPSEEK_API_KEY environment variable.
-        
-        Args:
-            prompt: The input prompt string.
-            **kwargs: Additional parameters (e.g., temperature, max_tokens).
-        
-        Returns:
-            The generated response string from DeepSeek.
+        """DeepSeek LLM 实现（使用 OpenAI 兼容 API）。
         
         Raises:
-            ValueError: If API key is not configured.
-            Exception: If the API call fails.
+            ValueError: API 密钥未配置。
+            Exception: API 调用失败。
         """
         try:
             import openai
@@ -190,20 +140,7 @@ class LLMProvider:
             raise Exception(f"DeepSeek API call failed: {str(e)}")
     
     async def generate_structured(self, prompt: str, response_format: str = "json", **kwargs: Any) -> Dict[str, Any]:
-        """Generate a structured response from the LLM.
-        
-        This method attempts to parse the LLM response as structured data
-        (e.g., JSON) and return it as a dictionary.
-        
-        Args:
-            prompt: The input prompt string.
-            response_format: Expected format ("json" or "text").
-            **kwargs: Additional parameters passed to generate().
-        
-        Returns:
-            A dictionary containing the parsed response. If parsing fails,
-            returns {"raw": response_string, "error": error_message}.
-        """
+        """生成结构化响应（如 JSON）。"""
         response = await self.generate(prompt, **kwargs)
         
         if response_format == "json":

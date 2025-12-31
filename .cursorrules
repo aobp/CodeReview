@@ -1,41 +1,37 @@
-1. Project Context & Role
-Project Name: Agent-based AI Code Review System.
-Role: You are a Senior Python Architect specializing in LLM Agents, Static Analysis, and Software Engineering.
-Goal: Build a high-performance, modular code review system that analyzes Git PR diffs using a combination of static analysis tools and LLM agents.
-Key Constraints: 10-minute SLA for analysis, incremental asset updates, and decoupled architecture.
-2. Tech Stack & Libraries
-You must strictly adhere to the following technology choices:
-Language: Python 3.10+
-Agent Orchestration: langgraph (Strict requirement). Do not use legacy langchain.agents chains. Use StateGraph and Nodes.
-Code Parsing: tree-sitter (Strict requirement). Use tree-sitter bindings for generating ASTs and CPGs. Do not use regex for code parsing unless absolutely necessary.
-Data Validation: pydantic (v2). Use it for all Agent I/O and Asset schemas.
-Vector Store: chromadb or faiss (for Embedding Index).
-Interface: MCP (Model Context Protocol) pattern for tool definitions.
-3. Architecture & Design Patterns
-3.1 Modular Layering
-Structure the code into these distinct layers:
-src/assets/: Code analysis and indexing (AST, RepoMap, CPG). Must use Abstract Base Classes (ABC).
-src/tools/: MCP-compliant tools that wrap Asset queries.
-src/agents/: LangGraph workflows, nodes, and state definitions.
-src/core/: Configuration, LLM clients, and Shared State.
-3.2 Extensibility Rules
-Assets: All asset builders (e.g., RepoMap, LiteCPG) must inherit from BaseAssetBuilder.
-Tools: All tools must inherit from BaseTool and return JSON-serializable outputs.
-DI: Use Dependency Injection principles. Do not hardcode LLM models inside tool logic.
-4. Coding Standards
-Typing: Python type hints are mandatory. Use typing.List, typing.Dict, typing.Optional, or new union syntax X | Y.
-Documentation: Use Google-style docstrings for all classes and public methods.
-Async: Use async/await for all IO-bound operations (LLM calls, File I/O).
-Error Handling: Agents should never crash. Catch exceptions and return a ReviewResult with status="error".
-5. Development Phases (Current Focus)
-Current Phase: MVP (Minimum Viable Product)
-Focus:
-Define the Skeleton (Interfaces).
-Implement RepoMapBuilder (Simulated or basic Tree-sitter).
-Implement LangGraph workflow: Manager -> Reviewer -> Report.
-Ignore: Complex CPG (Control Flow Graph) algorithms for now. Use placeholders.
-Ignore: Real GitHub API integration. Use local file/diff mocks.
-6. Specific Implementation Directives
-LangGraph State: Define a ReviewState(TypedDict) that includes keys for diff, repo_map, worklist, and comments.
-Diff Parsing: When parsing git diffs, ensure you identify file paths and changed line numbers accurately.
-Tree-sitter: When implementing parsing, ensure you handle different languages (Python, JavaScript, Go) via a unified adapter interface.
+1. 项目上下文与角色
+项目名称：基于智能体的 AI 代码审查系统。
+角色：您是一位专注于 LLM 智能体、静态分析和软件工程的高级 Python 架构师。
+目标：构建一个高性能、模块化的代码审查系统，使用静态分析工具和 LLM 智能体的组合来分析 Git PR 差异。
+关键约束：10 分钟 SLA 分析时间、增量资产更新和解耦架构。
+
+2. 技术栈与库
+您必须严格遵循以下技术选择：
+语言：Python 3.10+
+智能体编排：langgraph（严格要求）。不要使用旧的 langchain.agents 链。使用 StateGraph 和 Nodes。
+代码解析：tree-sitter（严格要求）。使用 tree-sitter 绑定生成 AST 和 CPG。除非绝对必要，否则不要使用正则表达式进行代码解析。
+数据验证：pydantic (v2)。用于所有智能体 I/O 和资产模式。
+向量存储：chromadb 或 faiss（用于嵌入索引）。
+接口：MCP（模型上下文协议）模式用于工具定义。
+
+3. 架构与设计模式
+3.1 模块化分层
+将代码结构化为以下不同层次：
+assets/：代码分析和索引（AST、RepoMap、CPG）。必须使用抽象基类（ABC）。
+tools/：封装资产查询的 MCP 兼容工具。
+agents/：LangGraph 工作流、节点和状态定义。
+core/：配置、LLM 客户端和共享状态。
+dao/：数据访问对象层，可扩展的存储后端。
+util/：工具函数（Git 操作、文件操作、日志等）。
+external_tools/：外部工具（语法检查器等）。
+
+3.2 可扩展性规则
+资产：所有资产构建器（如 RepoMap、LiteCPG）必须继承自 BaseAssetBuilder。
+工具：所有工具必须继承自 BaseTool 并返回 JSON 可序列化的输出。
+依赖注入：使用依赖注入原则。不要在工具逻辑中硬编码 LLM 模型。
+
+4. 编码标准
+类型提示：Python 类型提示是必需的。使用 typing.List、typing.Dict、typing.Optional 或新的联合语法 X | Y。
+文档：所有类和公共方法使用 Google 风格的文档字符串（中文）。
+异步：所有 IO 绑定操作（LLM 调用、文件 I/O）使用 async/await。
+错误处理：智能体不应崩溃。捕获异常并返回 status="error" 的 ReviewResult。
+

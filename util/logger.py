@@ -1,4 +1,4 @@
-"""Logging utilities for agent observations and tool results."""
+"""智能体观察和工具结果的日志工具。"""
 
 import json
 from datetime import datetime
@@ -10,16 +10,7 @@ from util.git_utils import get_repo_name
 
 
 def _get_log_directory(workspace_root: Path, config: Config, metadata: dict) -> Path:
-    """Get the log directory path for the current run.
-    
-    Args:
-        workspace_root: Root directory of the workspace.
-        config: Configuration object.
-        metadata: Metadata dictionary from results.
-    
-    Returns:
-        Path to the log directory.
-    """
+    """获取当前运行的日志目录路径。"""
     # Get repo name
     repo_name = get_repo_name(workspace_root)
     # Sanitize repo name for filesystem
@@ -47,17 +38,9 @@ def save_observations_to_log(
     workspace_root: Path,
     config: Config
 ) -> Optional[Path]:
-    """Save agent observations to a log file.
+    """将智能体观察保存到日志文件。
     
-    Log file structure: log/repo_name/model_name/timestamp/observations.log
-    
-    Args:
-        results: The final state dictionary from the workflow.
-        workspace_root: Root directory of the workspace.
-        config: Configuration object.
-    
-    Returns:
-        Path to the saved log file, or None if no observations to save.
+    日志文件结构：log/repo_name/model_name/timestamp/observations.log
     """
     metadata = results.get("metadata", {})
     observations = metadata.get("agent_observations", [])

@@ -1,7 +1,7 @@
-"""Local file-based storage backend implementation.
+"""基于本地文件的存储后端实现。
 
-This module implements a file-based storage backend that saves data as JSON files
-in a directory structure: .storage/{collection}/{key}.json
+实现基于文件的存储后端，将数据保存为 JSON 文件，
+目录结构：.storage/{collection}/{key}.json
 """
 
 import json
@@ -11,48 +11,27 @@ from dao.base import BaseStorageBackend
 
 
 class LocalFileBackend(BaseStorageBackend):
-    """File-based storage backend using local filesystem.
+    """使用本地文件系统的基于文件的存储后端。
     
-    Data is stored as JSON files in the structure:
-    .storage/{collection}/{key}.json
+    数据以 JSON 文件形式存储，结构：.storage/{collection}/{key}.json
     
-    This backend is suitable for MVP and development, and can be easily
-    replaced with database backends in production.
-    
-    Attributes:
-        storage_root: Root directory for storing files.
+    此后端适用于 MVP 和开发，在生产环境中可以轻松替换为数据库后端。
     """
     
     def __init__(self, storage_root: Path = None):
-        """Initialize the LocalFileBackend.
-        
-        Args:
-            storage_root: Root directory for storage. Defaults to .storage/ in current directory.
-        """
+        """初始化 LocalFileBackend。"""
         if storage_root is None:
             storage_root = Path.cwd() / ".storage"
         self.storage_root = Path(storage_root).resolve()
         self._connected = False
     
     async def connect(self) -> None:
-        """Initialize the storage directory.
-        
-        Creates the storage root directory if it doesn't exist.
-        This method is idempotent.
-        """
+        """初始化存储目录（幂等操作）。"""
         self.storage_root.mkdir(parents=True, exist_ok=True)
         self._connected = True
     
     def _get_file_path(self, collection: str, key: str) -> Path:
-        """Get the file path for a collection and key.
-        
-        Args:
-            collection: The collection name.
-            key: The key identifier.
-        
-        Returns:
-            Path to the storage file.
-        """
+        """获取集合和键的文件路径。"""
         # Sanitize collection and key to avoid path traversal
         collection = collection.replace("/", "_").replace("..", "")
         key = key.replace("/", "_").replace("..", "")
@@ -61,15 +40,10 @@ class LocalFileBackend(BaseStorageBackend):
         return collection_dir / f"{key}.json"
     
     async def save(self, collection: str, key: str, data: Any) -> None:
-        """Save data to a JSON file.
-        
-        Args:
-            collection: The collection name.
-            key: Unique identifier within the collection.
-            data: The data to save (must be JSON-serializable).
+        """将数据保存到 JSON 文件。
         
         Raises:
-            Exception: If the save operation fails (e.g., permission error, serialization error).
+            Exception: 保存操作失败（如权限错误、序列化错误）。
         """
         if not self._connected:
             await self.connect()

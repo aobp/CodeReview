@@ -1,7 +1,4 @@
-"""File reading utilities for the code review system.
-
-This module provides utilities for reading file contents from the workspace.
-"""
+"""代码审查系统的文件读取工具。"""
 
 import logging
 from pathlib import Path
@@ -13,15 +10,14 @@ logger = logging.getLogger(__name__)
 
 
 def read_file_content(file_path: str, config: Optional[Config] = None) -> str:
-    """Read the full content of a file.
+    """读取文件的完整内容。
     
     Args:
-        file_path: Path to the file (relative to repo root or absolute).
-        config: Config object containing workspace_root. If None, will try to use
-                current working directory as workspace root.
+        file_path: 文件路径（相对于仓库根目录或绝对路径）。
+        config: 包含 workspace_root 的配置对象。如果为 None，将尝试使用当前工作目录。
     
     Returns:
-        File content as string, or empty string if file cannot be read.
+        文件内容字符串，如果无法读取则返回空字符串。
     """
     try:
         if not config or not hasattr(config, 'system') or not hasattr(config.system, 'workspace_root'):

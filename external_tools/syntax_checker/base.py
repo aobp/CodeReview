@@ -1,7 +1,7 @@
-"""Base classes for syntax checkers.
+"""语法检查器基类。
 
-This module defines the abstract interface that all syntax checkers must implement.
-Syntax checkers provide deterministic static analysis before AI-based code review.
+定义所有语法检查器必须实现的抽象接口。
+语法检查器在基于 AI 的代码审查之前提供确定性静态分析。
 """
 
 from abc import ABC, abstractmethod
@@ -12,15 +12,7 @@ from pydantic import BaseModel, Field
 
 
 class LintError(BaseModel):
-    """Represents a single linting error.
-    
-    Attributes:
-        file: Path to the file with the error (relative to repo root).
-        line: Line number where the error occurs (1-indexed).
-        message: Error message describing the issue.
-        severity: Severity level ("error", "warning", or "info").
-        code: Optional error code (e.g., "E501", "F401" for Ruff).
-    """
+    """单个 lint 错误。"""
     
     file: str = Field(..., description="File path relative to repository root")
     line: int = Field(..., description="Line number (1-indexed)")
@@ -29,16 +21,16 @@ class LintError(BaseModel):
     code: str = Field(default="", description="Optional error code (e.g., 'E501', 'F401')")
     
     class Config:
-        """Pydantic configuration."""
+        """Pydantic 配置。"""
         frozen = True
 
 
 class BaseSyntaxChecker(ABC):
-    """Abstract base class for all syntax checkers.
+    """所有语法检查器的抽象基类。
     
-    All syntax checkers must inherit from this class and implement the `check` method.
-    Checkers are responsible for running static analysis tools (e.g., ruff, eslint)
-    on a list of files and returning standardized error reports.
+    所有语法检查器必须继承此类并实现 `check` 方法。
+    检查器负责在文件列表上运行静态分析工具（如 ruff、eslint），
+    并返回标准化的错误报告。
     """
     
     @abstractmethod
@@ -47,31 +39,22 @@ class BaseSyntaxChecker(ABC):
         repo_path: Path,
         files: List[str]
     ) -> List[LintError]:
-        """Run syntax/lint checking on the specified files.
-        
-        Args:
-            repo_path: Root path of the repository.
-            files: List of file paths relative to repo_path to check.
+        """对指定文件运行语法/lint 检查。
         
         Returns:
-            A list of LintError objects found in the files. Returns empty list
-            if no errors found or if checker is not available.
+            LintError 对象列表。如果未找到错误或检查器不可用，返回空列表。
         
         Note:
-            This method should gracefully handle cases where:
-            - The checker tool is not installed (return empty list)
-            - Files don't exist (skip them)
-            - The checker fails (return empty list or partial results)
+            此方法应优雅处理以下情况：
+            - 检查器工具未安装（返回空列表）
+            - 文件不存在（跳过）
+            - 检查器失败（返回空列表或部分结果）
         """
         pass
     
     @abstractmethod
     def get_supported_extensions(self) -> List[str]:
-        """Get list of file extensions this checker supports.
-        
-        Returns:
-            List of file extensions (e.g., [".py", ".pyi"] for Python).
-        """
+        """获取此检查器支持的文件扩展名列表。"""
         pass
     
     def _filter_existing_files(
@@ -79,15 +62,7 @@ class BaseSyntaxChecker(ABC):
         repo_path: Path,
         files: List[str]
     ) -> List[Path]:
-        """Filter files list to only include files that exist.
-        
-        Args:
-            repo_path: Root path of the repository.
-            files: List of file paths relative to repo_path.
-        
-        Returns:
-            List of Path objects for files that exist.
-        """
+        """过滤文件列表，仅包含存在的文件。"""
         existing = []
         for file_path in files:
             full_path = repo_path / file_path

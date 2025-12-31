@@ -1,8 +1,6 @@
-"""Configuration management for the code review system.
+"""代码审查系统配置管理。
 
-This module handles all configuration settings including LLM provider settings,
-file paths, and system parameters. Supports loading configuration from YAML, JSON,
-and environment variables.
+支持从 YAML、JSON 和环境变量加载配置。
 """
 
 import json
@@ -13,15 +11,7 @@ from pydantic import BaseModel, Field
 
 
 class LLMConfig(BaseModel):
-    """Configuration for LLM provider.
-    
-    Attributes:
-        provider: The LLM provider name (e.g., "openai", "mock").
-        model: The model name to use (e.g., "gpt-4", "gpt-3.5-turbo").
-        api_key: Optional API key for the provider.
-        base_url: Optional base URL for custom API endpoints.
-        temperature: Temperature setting for LLM responses.
-    """
+    """LLM 提供商配置。"""
     
     provider: str = Field(default="mock", description="LLM provider name")
     model: str = Field(default="gpt-4", description="Model name")
@@ -31,15 +21,7 @@ class LLMConfig(BaseModel):
 
 
 class SystemConfig(BaseModel):
-    """System-wide configuration.
-    
-    Attributes:
-        workspace_root: Root path of the workspace.
-        assets_dir: Directory for storing built assets.
-        timeout_seconds: Maximum time for analysis (SLA: 10 minutes = 600 seconds).
-        asset_key: Optional asset key for repository-specific assets (e.g., repo_map).
-        max_concurrent_llm_requests: Maximum number of concurrent LLM API requests (for concurrency control).
-    """
+    """系统配置。"""
     
     workspace_root: Path = Field(default=Path.cwd(), description="Workspace root path")
     assets_dir: Path = Field(default=Path("assets_cache"), description="Assets cache directory")
@@ -49,27 +31,14 @@ class SystemConfig(BaseModel):
 
 
 class Config(BaseModel):
-    """Main configuration class.
-    
-    Attributes:
-        llm: LLM provider configuration.
-        system: System-wide configuration.
-    """
+    """主配置类。"""
     
     llm: LLMConfig = Field(default_factory=LLMConfig)
     system: SystemConfig = Field(default_factory=SystemConfig)
     
     @classmethod
     def load_default(cls) -> "Config":
-        """Load default configuration.
-        
-        This method first tries to load from environment variables,
-        then from config files (config.yaml, config.json, .env),
-        and finally falls back to default values.
-        
-        Returns:
-            A Config instance with values from environment/config files or defaults.
-        """
+        """加载默认配置（优先环境变量，其次配置文件，最后默认值）。"""
         # Try to load from config files first
         config = cls._load_from_files()
         
@@ -80,19 +49,14 @@ class Config(BaseModel):
     
     @classmethod
     def load_from_file(cls, config_path: Path) -> "Config":
-        """Load configuration from a specific file.
-        
-        Supports YAML (.yaml, .yml) and JSON (.json) formats.
+        """从指定文件加载配置（支持 YAML/JSON）。
         
         Args:
-            config_path: Path to the configuration file.
-        
-        Returns:
-            A Config instance loaded from the file.
+            config_path: 配置文件路径。
         
         Raises:
-            FileNotFoundError: If the config file doesn't exist.
-            ValueError: If the file format is not supported or invalid.
+            FileNotFoundError: 文件不存在。
+            ValueError: 格式不支持或无效。
         """
         config_path = Path(config_path).resolve()
         
@@ -127,16 +91,7 @@ class Config(BaseModel):
     
     @classmethod
     def _load_from_files(cls) -> "Config":
-        """Try to load configuration from standard config file locations.
-        
-        Checks for config files in this order:
-        1. config.yaml / config.yml
-        2. config.json
-        3. .env (if python-dotenv is available)
-        
-        Returns:
-            A Config instance, using defaults if no config files found.
-        """
+        """从标准位置加载配置文件（config.yaml/config.json/.env）。"""
         config_paths = [
             Path("config.yaml"),
             Path("config.yml"),
@@ -164,19 +119,7 @@ class Config(BaseModel):
     
     @classmethod
     def _load_from_env(cls, config: "Config") -> "Config":
-        """Override configuration with environment variables.
-        
-        Environment variable naming convention:
-        - LLM_PROVIDER, LLM_MODEL, LLM_API_KEY, LLM_BASE_URL, LLM_TEMPERATURE
-        - DEEPSEEK_API_KEY (specific for DeepSeek, will set provider to "deepseek" if not set)
-        - WORKSPACE_ROOT, ASSETS_DIR, TIMEOUT_SECONDS
-        
-        Args:
-            config: Base Config instance to override.
-        
-        Returns:
-            Config instance with environment variable overrides applied.
-        """
+        """用环境变量覆盖配置。"""
         # LLM configuration from environment
         llm_config = config.llm.model_copy() if hasattr(config.llm, 'model_copy') else LLMConfig()
         
@@ -222,14 +165,10 @@ class Config(BaseModel):
         return cls(llm=llm_config, system=system_config)
     
     def save_to_file(self, config_path: Path) -> None:
-        """Save configuration to a file.
-        
-        Args:
-            config_path: Path where to save the configuration.
-                Format is determined by file extension (.yaml, .yml, or .json).
+        """保存配置到文件（格式由扩展名决定）。
         
         Raises:
-            ValueError: If the file format is not supported.
+            ValueError: 格式不支持。
         """
         config_path = Path(config_path).resolve()
         config_path.parent.mkdir(parents=True, exist_ok=True)

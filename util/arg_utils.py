@@ -1,4 +1,4 @@
-"""Argument validation and diff loading utilities."""
+"""参数验证和 diff 加载工具。"""
 
 import sys
 from pathlib import Path
@@ -8,16 +8,10 @@ from util.git_utils import get_git_diff, get_git_info
 
 
 def validate_repo_path(repo_path: Path) -> Path:
-    """Validate and resolve repository path.
-    
-    Args:
-        repo_path: Path to validate.
-    
-    Returns:
-        Resolved repository path.
+    """验证并解析仓库路径。
     
     Raises:
-        SystemExit: If the path is invalid.
+        SystemExit: 路径无效。
     """
     repo_path = Path(repo_path).resolve()
     
@@ -36,23 +30,16 @@ def load_diff_from_args(
     args,
     repo_path: Path
 ) -> Tuple[str, Optional[str], Optional[str]]:
-    """Load diff content from Git based on command line arguments.
+    """根据命令行参数从 Git 加载 diff 内容。
     
-    This function loads Git diff between base and head branches/commits.
-    It validates arguments and provides helpful error messages.
-    
-    Args:
-        args: Parsed command line arguments (argparse.Namespace).
-        repo_path: Path to the repository.
+    此函数加载 base 和 head 分支/提交之间的 Git diff。
+    它验证参数并提供有用的错误消息。
     
     Returns:
-        A tuple of (diff_content, branch, commit).
-        - diff_content: The diff content as a string.
-        - branch: Git branch name from head.
-        - commit: Git commit hash from head.
+        (diff_content, branch, commit) 元组。
     
     Raises:
-        SystemExit: If arguments are invalid or diff cannot be loaded.
+        SystemExit: 参数无效或无法加载 diff。
     """
     # Validate that --base and --head are provided
     if not args.base:

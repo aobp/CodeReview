@@ -1,4 +1,4 @@
-"""Git repository utilities for branch, commit, and diff operations."""
+"""Git 仓库工具，用于分支、提交和 diff 操作。"""
 
 import hashlib
 import logging
@@ -11,14 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 def get_git_info(repo_path: Path, ref: str = "HEAD") -> Tuple[Optional[str], Optional[str]]:
-    """Get Git branch and commit hash for a repository.
-    
-    Args:
-        repo_path: Path to the Git repository.
-        ref: Git reference (branch, tag, or commit). Default: "HEAD".
+    """获取仓库的 Git 分支和提交哈希。
     
     Returns:
-        A tuple of (branch_name, commit_hash). Returns (None, None) if not a Git repo or error.
+        (branch_name, commit_hash) 元组。如果不是 Git 仓库或出错，返回 (None, None)。
     """
     repo_path = Path(repo_path).resolve()
     
@@ -51,22 +47,15 @@ def get_git_info(repo_path: Path, ref: str = "HEAD") -> Tuple[Optional[str], Opt
 
 
 def get_changed_files(repo_path: Path, base: str, head: str = "HEAD") -> List[str]:
-    """Get list of changed files between two Git references.
+    """获取两个 Git 引用之间变更的文件列表。
     
-    This function executes `git diff --name-only {base}...{head}` to get
-    the list of files that have been changed between the two references.
-    
-    Args:
-        repo_path: Path to the Git repository.
-        base: Target branch (e.g., "main", "master").
-        head: Source branch or commit (default: "HEAD").
+    此函数执行 `git diff --name-only {base}...{head}` 以获取两个引用之间变更的文件列表。
     
     Returns:
-        A list of file paths relative to the repository root.
-        Returns empty list if no changes or if not a Git repository.
+        相对于仓库根目录的文件路径列表。如果没有变更或不是 Git 仓库，返回空列表。
     
     Raises:
-        ValueError: If repo_path is not a valid Git repository.
+        ValueError: repo_path 不是有效的 Git 仓库。
     """
     repo_path = Path(repo_path).resolve()
     

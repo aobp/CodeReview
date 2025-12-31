@@ -1,7 +1,7 @@
-"""Base classes for MCP-compliant tools.
+"""MCP 兼容工具基类。
 
-This module defines the base tool interface that all tools must implement.
-Tools wrap asset queries and provide a standardized interface for agents.
+定义所有工具必须实现的基类接口。
+工具封装资产查询，为智能体提供标准化接口。
 """
 
 from abc import ABC, abstractmethod
@@ -10,14 +10,10 @@ from pydantic import BaseModel, Field
 
 
 class BaseTool(BaseModel, ABC):
-    """Base class for all MCP-compliant tools.
+    """所有 MCP 兼容工具的基类。
     
-    All tools must inherit from this class and implement the `run` method.
-    Tools are Pydantic models, ensuring type safety and validation.
-    
-    Attributes:
-        name: The name of the tool (e.g., "read_file", "search_repo").
-        description: A human-readable description of what the tool does.
+    所有工具必须继承此类并实现 `run` 方法。
+    工具是 Pydantic 模型，确保类型安全和验证。
     """
     
     name: str = Field(..., description="The name of the tool")
@@ -25,23 +21,17 @@ class BaseTool(BaseModel, ABC):
     
     @abstractmethod
     async def run(self, **kwargs: Any) -> Dict[str, Any]:
-        """Execute the tool with the given parameters.
-        
-        Args:
-            **kwargs: Tool-specific parameters. Each tool should define its
-                     expected parameters in its docstring or schema.
+        """执行工具。
         
         Returns:
-            A dictionary containing the tool's output. Must be JSON-serializable.
-            The structure should be consistent for the same tool type.
+            JSON 可序列化的输出字典。
         
         Raises:
-            Exception: If the tool execution fails. Tools should handle errors
-                     gracefully and return error information in the result dict.
+            Exception: 工具执行失败。
         """
         pass
     
     class Config:
-        """Pydantic configuration."""
+        """Pydantic 配置。"""
         arbitrary_types_allowed = True
 

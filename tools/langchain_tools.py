@@ -1,9 +1,8 @@
 """LangChain 标准工具定义。
 
-重构说明：
-- 使用 LangChain 的 @tool 装饰器定义工具（LangGraph 标准做法）
-- 工具必须包含详细的 docstring（用于 LLM 意图识别）和类型注解
-- 这些工具可以直接使用 llm.bind_tools() 绑定到模型
+使用 LangChain 的 @tool 装饰器定义工具（LangGraph 标准做法）。
+工具必须包含详细的 docstring（用于 LLM 意图识别）和类型注解。
+这些工具可以直接使用 llm.bind_tools() 绑定到模型。
 """
 
 from pathlib import Path
@@ -171,21 +170,7 @@ def create_tools_with_context(
     
     此函数创建工具实例，并为需要上下文的工具（如 read_file）注入配置。
     由于 @tool 装饰器返回的是 Tool 对象，我们需要创建新的工具函数来注入上下文。
-    
-    重构说明：
-    - 为了支持依赖注入（workspace_root, asset_key），我们需要创建新的工具函数
-    - 使用 @tool 装饰器创建新的工具，内部调用原始工具逻辑
-    - 这是 LangGraph 中处理工具上下文的标准做法
-    
-    Args:
-        workspace_root: 工作区根目录路径。
-        asset_key: 仓库映射的资产键。
-    
-    Returns:
-        工具列表，可以直接用于 llm.bind_tools()。
     """
-    # 重构说明：由于 @tool 装饰器返回的是 Tool 对象，不能使用 partial
-    # 我们需要创建新的工具函数，内部调用原始工具逻辑
     
     @tool
     async def fetch_repo_map_with_context() -> Dict[str, Any]:

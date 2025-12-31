@@ -1,7 +1,6 @@
-"""Asset registry for managing asset builders.
+"""资产构建器注册表。
 
-This module provides a registry pattern for registering and retrieving
-asset builders by their type.
+提供注册表模式，用于按类型注册和检索资产构建器。
 """
 
 from typing import Dict, Type, Optional
@@ -9,56 +8,35 @@ from assets.base import BaseAssetBuilder
 
 
 class AssetRegistry:
-    """Registry for asset builders.
+    """资产构建器注册表。
     
-    This class maintains a mapping of asset types to their builder classes,
-    allowing dynamic registration and retrieval of asset builders.
-    
-    Attributes:
-        _builders: Dictionary mapping asset type strings to builder classes.
+    此类维护资产类型到其构建器类的映射，
+    允许动态注册和检索资产构建器。
     """
     
     def __init__(self):
-        """Initialize an empty registry."""
+        """初始化空注册表。"""
         self._builders: Dict[str, Type[BaseAssetBuilder]] = {}
     
     def register(self, asset_type: str, builder_class: Type[BaseAssetBuilder]) -> None:
-        """Register an asset builder class.
-        
-        Args:
-            asset_type: The unique identifier for the asset type.
-            builder_class: The builder class that implements BaseAssetBuilder.
+        """注册资产构建器类。
         
         Raises:
-            ValueError: If the asset_type is already registered.
+            ValueError: 资产类型已注册。
         """
         if asset_type in self._builders:
             raise ValueError(f"Asset type '{asset_type}' is already registered")
         self._builders[asset_type] = builder_class
     
     def get(self, asset_type: str) -> Optional[Type[BaseAssetBuilder]]:
-        """Get an asset builder class by type.
-        
-        Args:
-            asset_type: The unique identifier for the asset type.
-        
-        Returns:
-            The builder class if found, None otherwise.
-        """
+        """按类型获取资产构建器类。"""
         return self._builders.get(asset_type)
     
     def create(self, asset_type: str, **kwargs) -> Optional[BaseAssetBuilder]:
-        """Create an instance of an asset builder.
-        
-        Args:
-            asset_type: The unique identifier for the asset type.
-            **kwargs: Arguments to pass to the builder constructor.
-        
-        Returns:
-            An instance of the builder if found, None otherwise.
+        """创建资产构建器实例。
         
         Raises:
-            ValueError: If the asset_type is not registered.
+            ValueError: 资产类型未注册。
         """
         builder_class = self.get(asset_type)
         if builder_class is None:
@@ -66,15 +44,11 @@ class AssetRegistry:
         return builder_class(asset_type=asset_type, **kwargs)
 
 
-# Global registry instance
+# 全局注册表实例
 _registry = AssetRegistry()
 
 
 def get_registry() -> AssetRegistry:
-    """Get the global asset registry instance.
-    
-    Returns:
-        The global AssetRegistry instance.
-    """
+    """获取全局资产注册表实例。"""
     return _registry
 

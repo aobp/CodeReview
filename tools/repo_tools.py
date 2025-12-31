@@ -1,8 +1,4 @@
-"""Repository tools for the code review system.
-
-This module provides tools for accessing repository structure and metadata
-stored in the DAO layer.
-"""
+"""代码审查系统的仓库工具。"""
 
 from typing import Any, Dict, Optional
 from pydantic import Field
@@ -11,13 +7,7 @@ from dao.factory import get_storage
 
 
 class FetchRepoMapTool(BaseTool):
-    """Tool for fetching repository map from storage.
-    
-    This tool loads the repository map asset from the DAO layer and returns
-    a summary string that agents can use to understand the project structure.
-    The agent uses this tool to "perceive" the codebase structure rather than
-    relying on hardcoded context.
-    """
+    """从存储中获取仓库地图的工具。"""
     
     asset_key: Optional[str] = Field(
         default=None,
@@ -25,12 +15,7 @@ class FetchRepoMapTool(BaseTool):
     )
     
     def __init__(self, asset_key: Optional[str] = None, **kwargs):
-        """Initialize the FetchRepoMapTool.
-        
-        Args:
-            asset_key: Optional asset key for the repository map. If None, uses default "repo_map".
-            **kwargs: Additional arguments passed to BaseTool.
-        """
+        """初始化仓库地图获取工具。"""
         super().__init__(
             name="fetch_repo_map",
             description="Fetch the repository map to understand the project structure. Returns a summary of files and directory layout.",
@@ -39,15 +24,10 @@ class FetchRepoMapTool(BaseTool):
         )
     
     async def run(self, **kwargs: Any) -> Dict[str, Any]:
-        """Fetch repository map from storage and return summary.
-        
-        Args:
-            **kwargs: Additional parameters (not used currently).
+        """从存储中获取仓库地图并返回摘要。
         
         Returns:
-            A dictionary containing:
-                - "summary": A string summary of the repository structure.
-                - "file_count": Number of files in the repository.
+            包含 "summary" 和 "file_count" 的字典。
                 - "files": List of file paths (truncated if too many).
                 - "error": Optional error message if fetching failed.
         """

@@ -1,12 +1,7 @@
-"""Manager Node for the code review workflow.
+"""代码审查工作流的 Manager 节点。
 
-重构说明：
-- 使用 PydanticOutputParser 解析结构化输出（LangGraph 标准做法）
-- 使用 LCEL 语法：prompt | llm | parser
-- 替代手动 JSON 解析，提高类型安全和错误处理
-
-This node receives file analyses and generates a work list of tasks for expert agents.
-It groups tasks by risk type to enable parallel execution.
+接收文件分析结果，生成专家任务列表，并按风险类型分组以支持并行执行。
+使用 LCEL 语法和 PydanticOutputParser。
 """
 
 import logging
@@ -22,18 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 async def manager_node(state: ReviewState) -> Dict[str, Any]:
-    """Manager node that generates work list and groups tasks by risk type.
-    
-    This node:
-    1. Receives file_analyses from intent analysis
-    2. Generates a work_list of RiskItems
-    3. Groups work_list by risk_type into expert_tasks
-    
-    Args:
-        state: Current workflow state with file_analyses.
+    """Manager 节点：生成任务列表并按风险类型分组。
     
     Returns:
-        Dictionary with 'work_list' and 'expert_tasks' keys.
+        包含 'work_list' 和 'expert_tasks' 键的字典。
     """
     print("\n" + "="*80)
     print("👔 [节点2] Manager - 生成任务列表并分组")
@@ -130,14 +117,7 @@ async def manager_node(state: ReviewState) -> Dict[str, Any]:
 
 
 def _format_file_analyses(file_analyses: List[Any]) -> str:
-    """Format file analyses for prompt.
-    
-    Args:
-        file_analyses: List of FileAnalysis objects.
-    
-    Returns:
-        Formatted string summary.
-    """
+    """格式化文件分析结果用于提示词。"""
     summaries = []
     for analysis in file_analyses:
         summaries.append(
@@ -148,14 +128,7 @@ def _format_file_analyses(file_analyses: List[Any]) -> str:
     return "\n".join(summaries)
 
 def _format_work_list(work_list: List[Any]) -> str:
-    """Format file analyses for prompt.
-
-    Args:
-        file_analyses: List of FileAnalysis objects.
-
-    Returns:
-        Formatted string summary.
-    """
+    """格式化任务列表用于提示词。"""
     summaries = []
     for w in work_list:
         summaries.append(
@@ -167,27 +140,8 @@ def _format_work_list(work_list: List[Any]) -> str:
         )
     return "\n".join(summaries)
 
-# 重构说明：_parse_manager_response 函数已被移除
-# 现在使用 PydanticOutputParser 直接解析为 WorkListResponse 模型
-# 这样可以：
-# 1. 自动验证所有字段类型
-# 2. 自动处理 line_number 等必需字段的验证
-# 3. 提供更好的错误信息
-# 4. 符合 LangGraph 标准做法
-
-
 def _get_expanded_format_instructions(parser: PydanticOutputParser) -> str:
-    """Generate expanded format instructions that include nested model structures.
-    
-    This function expands the JSON schema to show the full structure of nested models
-    (like RiskItem) instead of just references.
-    
-    Args:
-        parser: PydanticOutputParser instance.
-    
-    Returns:
-        Expanded format instructions string.
-    """
+    """生成扩展的格式说明（包含嵌套模型结构）。"""
     import json
     
     # Get the JSON schema from the Pydantic model
@@ -249,14 +203,7 @@ def _get_expanded_format_instructions(parser: PydanticOutputParser) -> str:
 
 
 def _convert_lint_errors_to_risk_items(lint_errors: List[Dict[str, Any]]) -> List[RiskItem]:
-    """Convert lint errors to RiskItem objects.
-    
-    Args:
-        lint_errors: List of lint error dictionaries with keys: file, line, message, severity, code.
-    
-    Returns:
-        List of RiskItem objects with risk_type=syntax.
-    """
+    """将 lint 错误转换为 RiskItem 对象（risk_type=syntax）。"""
     risk_items = []
     for error in lint_errors:
         try:
@@ -292,14 +239,7 @@ def _convert_lint_errors_to_risk_items(lint_errors: List[Dict[str, Any]]) -> Lis
 
 
 def _group_tasks_by_risk_type(work_list: List[RiskItem]) -> Dict[str, List[RiskItem]]:
-    """Group work list items by risk type.
-    
-    Args:
-        work_list: List of RiskItem objects.
-    
-    Returns:
-        Dictionary mapping risk_type (as string) to list of RiskItems.
-    """
+    """按风险类型分组任务列表。"""
     grouped = {}
     for item in work_list:
         risk_type_str = item.risk_type.value

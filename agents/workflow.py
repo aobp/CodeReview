@@ -1,16 +1,10 @@
-"""Multi-agent workflow for code review using LangGraph.
+"""基于 LangGraph 的多智能体代码审查工作流。
 
-重构说明：
-1. 添加 LangGraph checkpointer 支持（MemorySaver）用于记忆持久化
-2. 使用 LangChain 标准工具定义（@tool 装饰器）
-3. 使用 llm.bind_tools() 绑定工具到模型
-4. 使用 LangGraph ToolNode 执行工具调用
-
-This module implements a dynamic parallel execution workflow with:
-- Map-Reduce pattern for intent analysis
-- Manager node for task routing
-- Parallel expert execution with concurrency control
-- Final report generation
+工作流结构：
+1. Intent Analysis（Map-Reduce）：并行分析文件意图
+2. Manager：生成任务列表并按风险类型分组
+3. Expert Execution：并行执行专家组任务（并发控制）
+4. Reporter：生成最终报告
 """
 
 import logging
@@ -36,36 +30,21 @@ logger = logging.getLogger(__name__)
 
 def create_multi_agent_workflow(
     config: Config,
-    enable_checkpointing: bool = False  # 重构说明：默认禁用，因为代码审查工作流通常不需要跨会话持久化
+    enable_checkpointing: bool = False
 ) -> Any:
-    """Create the multi-agent workflow graph.
-    
-    重构说明：
-    1. 添加 checkpointer 支持（MemorySaver）用于记忆持久化
-    2. 创建 LangChain LLM 适配器，支持 LCEL 语法
-    3. 使用标准工具定义（@tool 装饰器）
-    4. 使用 llm.bind_tools() 绑定工具（在需要工具调用的节点中）
-    
-    Workflow structure:
-    1. Intent Analysis (Map-Reduce): Analyze each changed file in parallel
-    2. Manager: Generate work_list and group by risk_type into expert_tasks
-    3. Expert Execution: Parallel execution of expert groups with concurrency control
-    4. Reporter: Generate final report from expert results
+    """创建多智能体工作流图。
     
     Args:
-        config: Configuration object.
-        enable_checkpointing: 是否启用 checkpointer（记忆持久化）。
+        config: 配置对象。
+        enable_checkpointing: 是否启用 checkpointer（默认禁用）。
     
     Returns:
-        Compiled LangGraph workflow with checkpointer support.
+        编译后的 LangGraph 工作流。
     """
     # Initialize LLM provider
     llm_provider = LLMProvider(config.llm)
-    
-    # 重构说明：创建 LangChain LLM 适配器，支持 LCEL 语法
     llm_adapter = LangChainLLMAdapter(llm_provider=llm_provider)
     
-    # Initialize tools (保持向后兼容，同时支持新工具)
     workspace_root = config.system.workspace_root
     asset_key = config.system.asset_key
     tools = [
@@ -73,14 +52,11 @@ def create_multi_agent_workflow(
         ReadFileTool(workspace_root=workspace_root)
     ]
     
-    # 重构说明：创建 LangChain 标准工具（使用 @tool 装饰器）
     langchain_tools = create_tools_with_context(
         workspace_root=workspace_root,
         asset_key=asset_key
     )
     
-    # 重构说明：创建 checkpointer 用于记忆持久化
-    # 这是 LangGraph 标准做法，替代 ConversationBufferMemory 等传统 Memory 类
     checkpointer = MemorySaver() if enable_checkpointing else None
     
     # Create workflow graph
@@ -91,13 +67,6 @@ def create_multi_agent_workflow(
     workflow.add_node("manager", manager_node)
     workflow.add_node("expert_execution", expert_execution_node)
     workflow.add_node("reporter", reporter_node)
-    
-    # 重构说明：添加 ToolNode 用于执行工具调用
-    # 这是 LangGraph 标准做法，替代手动解析工具调用
-    # 注意：当前工作流中工具调用主要在 expert_execution_node 中手动处理
-    # 如果需要，可以添加一个专门的工具执行节点
-    # tool_node = ToolNode(langchain_tools)
-    # workflow.add_node("tools", tool_node)
     
     # Set entry point
     workflow.set_entry_point("intent_analysis")
@@ -123,7 +92,6 @@ def create_multi_agent_workflow(
     workflow.add_edge("reporter", END)
     
     # Compile workflow with checkpointer
-    # 重构说明：使用 checkpointer 编译工作流，支持记忆持久化
     compile_kwargs = {}
     if checkpointer:
         compile_kwargs["checkpointer"] = checkpointer
@@ -142,15 +110,9 @@ def create_multi_agent_workflow(
 
 
 def route_to_experts(state: ReviewState) -> str:
-    """Route from manager to expert_execution or reporter.
+    """从 Manager 路由到 expert_execution 或 reporter。
     
-    If work_list is empty, skip to reporter. Otherwise, go to expert_execution.
-    
-    Args:
-        state: Current workflow state.
-    
-    Returns:
-        Next node name: "expert_execution" or "reporter".
+    如果 work_list 为空，跳转到 reporter；否则执行 expert_execution。
     """
     print("\n" + "="*80)
     print("🔀 [路由] route_to_experts - 决策下一步")
@@ -179,70 +141,44 @@ def _wrap_workflow_with_dependencies(
     tools: List[Any],
     langchain_tools: List[Any]
 ) -> Any:
-    """Wrap workflow nodes to inject dependencies (LLM provider, config, tools).
+    """包装工作流节点以注入依赖（LLM、配置、工具）。
     
-    重构说明：
-    - 添加 llm_adapter 到 metadata，支持 LCEL 语法
-    - 添加 langchain_tools 到 metadata，支持工具绑定
-    
-    This is a workaround since LangGraph doesn't directly support dependency injection.
-    We'll modify the state to include these dependencies in metadata before execution.
-    
-    Args:
-        compiled_graph: Compiled LangGraph workflow.
-        llm_provider: LLM provider instance.
-        llm_adapter: LangChain LLM adapter instance (for LCEL syntax).
-        config: Configuration object.
-        tools: List of tool instances (legacy BaseTool).
-        langchain_tools: List of LangChain tool instances (using @tool decorator).
-    
-    Returns:
-        Wrapped compiled graph.
+    通过修改 state 的 metadata 字段注入依赖。
     """
     # Store original invoke methods
     original_ainvoke = compiled_graph.ainvoke
     original_invoke = compiled_graph.invoke
     
     async def ainvoke_with_deps(state: ReviewState, **kwargs) -> ReviewState:
-        """Invoke workflow with dependencies injected into state.
-        
-        重构说明：
-        - 初始化 messages 字段（如果不存在）
-        - 注入 llm_adapter 支持 LCEL 语法
-        - 注入 langchain_tools 支持工具绑定
-        """
-        # 重构说明：初始化 messages 字段（LangGraph 标准）
+        """执行工作流（注入依赖到 state）。"""
         if "messages" not in state:
             state["messages"] = []
         
-        # Inject dependencies into metadata
         if "metadata" not in state:
             state["metadata"] = {}
         
         state["metadata"]["llm_provider"] = llm_provider
-        state["metadata"]["llm_adapter"] = llm_adapter  # 新增：支持 LCEL 语法
+        state["metadata"]["llm_adapter"] = llm_adapter
         state["metadata"]["config"] = config
-        state["metadata"]["tools"] = tools  # 保持向后兼容
-        state["metadata"]["langchain_tools"] = langchain_tools  # 新增：LangChain 标准工具
+        state["metadata"]["tools"] = tools
+        state["metadata"]["langchain_tools"] = langchain_tools
         
         # Call original invoke
         return await original_ainvoke(state, **kwargs)
     
     def invoke_with_deps(state: ReviewState, **kwargs) -> ReviewState:
-        """Invoke workflow with dependencies injected into state (sync version)."""
-        # 重构说明：初始化 messages 字段（LangGraph 标准）
+        """执行工作流（同步版本）。"""
         if "messages" not in state:
             state["messages"] = []
         
-        # Inject dependencies into metadata
         if "metadata" not in state:
             state["metadata"] = {}
         
         state["metadata"]["llm_provider"] = llm_provider
-        state["metadata"]["llm_adapter"] = llm_adapter  # 新增：支持 LCEL 语法
+        state["metadata"]["llm_adapter"] = llm_adapter
         state["metadata"]["config"] = config
-        state["metadata"]["tools"] = tools  # 保持向后兼容
-        state["metadata"]["langchain_tools"] = langchain_tools  # 新增：LangChain 标准工具
+        state["metadata"]["tools"] = tools
+        state["metadata"]["langchain_tools"] = langchain_tools
         
         # Call original invoke
         return original_invoke(state, **kwargs)
@@ -254,20 +190,8 @@ def _wrap_workflow_with_dependencies(
     return compiled_graph
 
 
-# Map-Reduce wrapper for intent analysis
 async def map_intent_analysis(state: ReviewState) -> ReviewState:
-    """Map function for intent analysis (processes one file at a time).
-    
-    This is used with LangGraph's map-reduce capabilities. However, since
-    LangGraph's map-reduce might not be directly available, we'll implement
-    a custom parallel execution in the intent_analysis_node.
-    
-    Args:
-        state: Current workflow state.
-    
-    Returns:
-        Updated state with file_analyses.
-    """
+    """意图分析的 Map 函数（在 intent_analysis_node 中实现并行执行）。"""
     # For now, we'll process all files in the intent_analysis_node
     # In a full implementation, we could use LangGraph's map capabilities
     # or implement custom parallel execution
@@ -280,16 +204,16 @@ async def run_multi_agent_workflow(
     config: Config = None,
     lint_errors: List[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
-    """Run the multi-agent workflow for code review.
+    """运行多智能体代码审查工作流。
     
     Args:
-        diff_context: The raw Git diff string from the PR.
-        changed_files: List of file paths that were changed.
-        config: Optional configuration object. If None, uses default config.
-        lint_errors: Optional list of linting errors from pre-agent syntax checking.
+        diff_context: Git diff 字符串。
+        changed_files: 变更文件路径列表。
+        config: 配置对象（可选，默认使用默认配置）。
+        lint_errors: 预检查的 lint 错误列表（可选）。
     
     Returns:
-        A dictionary containing the final state with review results.
+        包含最终审查结果的状态字典。
     """
     if config is None:
         from core.config import Config
@@ -299,9 +223,8 @@ async def run_multi_agent_workflow(
     app = create_multi_agent_workflow(config)
     
     # Initialize state
-    # 重构说明：添加 messages 字段初始化（LangGraph 标准）
     initial_state: ReviewState = {
-        "messages": [],  # 新增：消息历史（LangGraph 标准）
+        "messages": [],
         "diff_context": diff_context,
         "changed_files": changed_files,
         "file_analyses": [],
@@ -329,10 +252,6 @@ async def run_multi_agent_workflow(
     print("="*80)
     
     try:
-        # 重构说明：如果启用了 checkpointer，需要传入 config 包含 thread_id
-        # 为每次运行生成唯一的 thread_id（基于时间戳和文件列表）
-        # 注意：当前默认禁用 checkpointer，所以通常不需要传入 config
-        # 但如果需要启用，可以取消下面的注释并传入 config
         invoke_kwargs = {}
         
         # 可选：如果启用了 checkpointer，生成 thread_id 并传入 config

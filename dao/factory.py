@@ -1,7 +1,6 @@
-"""Factory for creating and managing storage backend instances.
+"""创建和管理存储后端实例的工厂。
 
-This module provides a singleton factory pattern for storage backends,
-ensuring that only one instance of each backend type is created and reused.
+提供存储后端的单例工厂模式，确保每种后端类型只创建一个实例并重复使用。
 """
 
 from typing import Optional
@@ -11,10 +10,9 @@ from dao.backends.local_file import LocalFileBackend
 
 
 class StorageFactory:
-    """Factory for creating storage backend instances.
+    """创建存储后端实例的工厂类。
     
-    This class maintains singleton instances of storage backends to ensure
-    efficient resource usage and consistent state across the application.
+    此类维护存储后端的单例实例，以确保高效的资源使用和应用程序中的一致状态。
     """
     
     _instances: dict[str, BaseStorageBackend] = {}
@@ -26,22 +24,12 @@ class StorageFactory:
         storage_type: str = "local",
         **kwargs
     ) -> BaseStorageBackend:
-        """Get a storage backend instance.
+        """获取存储后端实例。
         
-        This method returns a singleton instance of the specified storage backend.
-        If the instance doesn't exist, it creates a new one.
-        
-        Args:
-            storage_type: Type of storage backend ("local", "sql", "mongodb", etc.).
-                         Defaults to "local".
-            **kwargs: Additional parameters for backend initialization.
-                     For "local": storage_root (Path, optional)
-        
-        Returns:
-            A BaseStorageBackend instance.
+        此方法返回指定存储后端的单例实例。如果实例不存在，则创建新实例。
         
         Raises:
-            ValueError: If the storage type is not supported.
+            ValueError: 存储类型不支持。
         """
         # Use default type if not specified
         if not storage_type:
@@ -67,28 +55,15 @@ class StorageFactory:
     
     @classmethod
     def set_default_type(cls, storage_type: str) -> None:
-        """Set the default storage type.
-        
-        Args:
-            storage_type: The default storage type to use.
-        """
+        """设置默认存储类型。"""
         cls._default_type = storage_type
     
     @classmethod
     def reset(cls) -> None:
-        """Reset all storage instances (useful for testing)."""
+        """重置所有存储实例（用于测试）。"""
         cls._instances.clear()
 
 
-# Convenience function for easy access
 def get_storage(storage_type: str = "local", **kwargs) -> BaseStorageBackend:
-    """Convenience function to get a storage backend instance.
-    
-    Args:
-        storage_type: Type of storage backend (defaults to "local").
-        **kwargs: Additional parameters for backend initialization.
-    
-    Returns:
-        A BaseStorageBackend instance.
-    """
+    """便捷函数，获取存储后端实例。"""
     return StorageFactory.get_storage(storage_type, **kwargs)

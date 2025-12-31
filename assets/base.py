@@ -1,7 +1,7 @@
-"""Base classes for asset builders.
+"""资产构建器基类。
 
-This module defines the abstract interface that all asset builders must implement.
-Assets represent analyzed code structures such as ASTs, RepoMaps, and CPGs.
+定义所有资产构建器必须实现的抽象接口。
+资产表示分析的代码结构（如 AST、RepoMap、CPG）。
 """
 
 from abc import ABC, abstractmethod
@@ -10,84 +10,54 @@ from pathlib import Path
 
 
 class BaseAssetBuilder(ABC):
-    """Abstract base class for all asset builders.
-    
-    All asset builders (e.g., RepoMapBuilder, CPGBuilder) must inherit from this
-    class and implement the four core methods: build, query, save, and load.
-    
-    Attributes:
-        asset_type: A string identifier for the type of asset (e.g., "repo_map", "cpg").
-    """
+    """所有资产构建器的抽象基类。"""
     
     def __init__(self, asset_type: str):
-        """Initialize the asset builder.
-        
-        Args:
-            asset_type: A unique identifier for this asset type.
-        """
+        """初始化资产构建器。"""
         self.asset_type = asset_type
     
     @abstractmethod
     async def build(self, source_path: Path, **kwargs: Any) -> Dict[str, Any]:
-        """Build the asset from source code.
-        
-        This method should analyze the codebase at the given path and generate
-        the asset representation. For MVP, this can be a simplified version.
-        
-        Args:
-            source_path: Path to the source code directory or file.
-            **kwargs: Additional parameters specific to the asset builder.
+        """从源代码构建资产。
         
         Returns:
-            A dictionary containing the built asset data. The structure is
-            asset-specific but must be JSON-serializable.
+            JSON 可序列化的资产数据字典。
         
         Raises:
-            Exception: If the build process fails.
+            Exception: 构建失败。
         """
         pass
     
     @abstractmethod
     async def query(self, query: str, **kwargs: Any) -> Dict[str, Any]:
-        """Query the asset with a natural language or structured query.
-        
-        Args:
-            query: The query string (e.g., "find all functions in file X").
-            **kwargs: Additional query parameters.
+        """查询资产（自然语言或结构化查询）。
         
         Returns:
-            A dictionary containing query results. Must be JSON-serializable.
+            JSON 可序列化的查询结果字典。
         
         Raises:
-            Exception: If the query fails.
+            Exception: 查询失败。
         """
         pass
     
     @abstractmethod
     async def save(self, output_path: Path, asset_data: Dict[str, Any]) -> None:
-        """Save the asset to disk.
-        
-        Args:
-            output_path: Path where the asset should be saved.
-            asset_data: The asset data dictionary to save.
+        """保存资产到磁盘。
         
         Raises:
-            Exception: If the save operation fails.
+            Exception: 保存失败。
         """
         pass
     
     @abstractmethod
     async def load(self, input_path: Path) -> Dict[str, Any]:
-        """Load the asset from disk.
-        
-        Args:
-            input_path: Path to the saved asset file.
+        """从磁盘加载资产。
         
         Returns:
-            A dictionary containing the loaded asset data.
+            资产数据字典。
         
         Raises:
-            Exception: If the load operation fails or the file doesn't exist.
+            Exception: 加载失败或文件不存在。
         """
         pass
 

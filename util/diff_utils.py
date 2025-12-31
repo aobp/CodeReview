@@ -1,9 +1,7 @@
-"""Git Diff parsing utilities for generating code context with absolute line numbers.
+"""Git Diff 解析工具，用于生成带绝对行号的代码上下文。
 
-This module uses the unidiff library to parse Git diff content and generate
-code context text with absolute line numbers in the new file (HEAD version).
-This is essential for accurate code review comments that can reference specific
-lines in the target file.
+此模块使用 unidiff 库解析 Git diff 内容，生成新文件（HEAD 版本）中带绝对行号的代码上下文。
+这对于可以引用目标文件中特定行的准确代码审查注释至关重要。
 """
 
 import logging
@@ -15,37 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 def parse_diff_with_line_numbers(diff_content: str) -> Dict[str, "FileContext"]:
-    """Parse Git diff and generate code context with absolute line numbers.
+    """解析 Git diff 并生成带绝对行号的代码上下文。
     
-    This function parses a Git diff string and generates a mapping from file paths
-    to FileContext objects, which contain the code with absolute line numbers
-    in the new file (HEAD version).
-    
-    Args:
-        diff_content: The Git diff content as a string.
-    
-    Returns:
-        A dictionary mapping file paths (relative to repo root) to FileContext objects.
-        Each FileContext contains:
-        - file_path: The file path
-        - new_file_lines: List of (line_number, line_content) tuples for new file
-        - context_text: Formatted text with line numbers for LLM consumption
-        - added_lines: Set of line numbers that were added
-        - modified_lines: Set of line numbers that were modified
-        - removed_lines: Set of line numbers that were removed (in old file)
-    
-    Example:
-        >>> diff = '''diff --git a/src/main.py b/src/main.py
-        ... @@ -10,5 +10,7 @@ def hello():
-        ...  print("hello")
-        ... +print("world")
-        ... +print("!")
-        ...  print("done")
-        ... '''
-        >>> contexts = parse_diff_with_line_numbers(diff)
-        >>> ctx = contexts['src/main.py']
-        >>> print(ctx.context_text)
-        ... # Shows code with line numbers
+    此函数解析 Git diff 字符串，生成从文件路径到 FileContext 对象的映射，
+    FileContext 包含新文件（HEAD 版本）中带绝对行号的代码。
     """
     if not diff_content or not diff_content.strip():
         return {}

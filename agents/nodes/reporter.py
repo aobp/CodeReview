@@ -1,7 +1,6 @@
-"""Reporter Node for the code review workflow.
+"""代码审查工作流的报告生成节点。
 
-This node generates the final review report by aggregating expert results
-and applying confidence filtering.
+聚合专家结果并应用置信度过滤，生成最终审查报告。
 """
 
 import logging
@@ -14,19 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 async def reporter_node(state: ReviewState) -> Dict[str, Any]:
-    """Generate final review report from expert results.
-    
-    This node:
-    1. Collects all expert_results
-    2. Filters by confidence threshold
-    3. Generates final report
-    4. Updates confirmed_issues
-    
-    Args:
-        state: Current workflow state with expert_results.
+    """从专家结果生成最终审查报告。
     
     Returns:
-        Dictionary with 'confirmed_issues' and 'final_report' keys.
+        包含 'confirmed_issues' 和 'final_report' 键的字典。
     """
     print("\n" + "="*80)
     print("📊 [节点4] Reporter - 生成最终报告")
@@ -106,14 +96,7 @@ async def reporter_node(state: ReviewState) -> Dict[str, Any]:
 
 
 def _generate_simple_report(confirmed_issues: List[RiskItem]) -> str:
-    """Generate a simple text report from confirmed issues.
-    
-    Args:
-        confirmed_issues: List of confirmed RiskItem objects.
-    
-    Returns:
-        Simple text report.
-    """
+    """从确认的问题生成简单文本报告。"""
     if not confirmed_issues:
         return "No issues found. Code review completed successfully."
     

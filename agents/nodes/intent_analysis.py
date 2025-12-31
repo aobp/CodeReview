@@ -1,12 +1,7 @@
-"""Intent Analysis Node for the code review workflow.
+"""代码审查工作流的意图分析节点。
 
-重构说明：
-- 使用 LCEL (LangChain Expression Language) 语法：prompt | llm | parser
-- 这是 LangGraph 标准做法，替代直接调用 llm_provider.generate()
-- 节点接收 state 作为输入，返回 state 的更新部分（Partial Update）
-
-This node implements a Map-Reduce pattern to analyze the intent of changed files
-in parallel. Each file is analyzed independently, and results are aggregated.
+实现 Map-Reduce 模式，并行分析变更文件的意图。
+使用 LCEL 语法：prompt | llm | parser。
 """
 
 import asyncio
@@ -27,15 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
-    """Analyze the intent of all changed files in parallel (Map-Reduce pattern).
-    
-    This function processes all changed files in parallel and aggregates results.
-    
-    Args:
-        state: Current workflow state with changed_files.
+    """并行分析所有变更文件的意图（Map-Reduce 模式）。
     
     Returns:
-        Dictionary with 'file_analyses' key containing a list of FileAnalysis objects.
+        包含 'file_analyses' 键的字典。
     """
     print("\n" + "="*80)
     print("📋 [节点1] Intent Analysis - 并行分析文件意图")
@@ -79,30 +69,17 @@ async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
             logger.error("LLM provider not found in metadata")
             return {"file_analyses": []}
     
-    # Process all files in parallel
     async def analyze_file(file_path: str) -> FileAnalysis:
-        """Analyze a single file using LCEL syntax.
-        
-        重构说明：
-        - 使用 LCEL 语法：prompt | llm | parser
-        - 替代直接调用 llm_provider.generate()
-        """
+        """使用 LCEL 语法分析单个文件。"""
         async with semaphore:
             try:
                 print(f"  🔍 分析中: {file_path}")
-                # Extract relevant diff section for this file with line numbers
-                # TODO： 思考一下，diff要不要传入remove行
                 file_diff = _extract_file_diff(diff_context, file_path)
                 
                 # 读取文件内容
                 file_content = read_file_content(file_path, config)
                 
-                # 使用 LCEL 语法创建链：prompt | llm | parser
-                # 重构说明：由于 render_prompt_template 已经渲染了模板（包含 JSON 示例），
-                # 我们不能使用 ChatPromptTemplate（它会尝试解析 JSON 中的大括号作为变量）
-                # 应该直接使用 HumanMessage 和 SystemMessage
-                
-                # 渲染提示模板（已经完成变量替换）
+                # 渲染提示模板
                 rendered_prompt = render_prompt_template(
                     "intent_analysis",
                     file_path=file_path,
@@ -110,8 +87,6 @@ async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
                     file_content=file_content
                 )
                 
-                # 重构说明：使用 PydanticOutputParser 直接解析为 FileAnalysis 模型
-                # 这是 LangGraph 标准做法，替代手动 JSON 解析
                 parser = PydanticOutputParser(pydantic_object=FileAnalysis)
                 
                 # 创建消息列表（直接使用已渲染的文本，并添加格式说明）
@@ -175,19 +150,10 @@ async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
 
 
 def _extract_file_diff(diff_context: str, file_path: str) -> str:
-    """Extract the diff section for a specific file with absolute line numbers.
+    """提取指定文件的 diff 片段（包含绝对行号）。
     
-    This function uses the unidiff library to parse the Git diff and generate
-    code context with absolute line numbers in the new file (HEAD version).
-    This enables accurate line number references in review comments.
-    
-    Args:
-        diff_context: Full diff context.
-        file_path: Path to the file (relative to repo root).
-    
-    Returns:
-        Formatted code context text with absolute line numbers for the new file.
-        Falls back to raw diff section if parsing fails.
+    使用 unidiff 解析 Git diff，生成包含新文件绝对行号的代码上下文。
+    如果解析失败，回退到原始 diff 片段。
     """
     try:
         # Use diff_utils to generate context with line numbers
@@ -222,24 +188,8 @@ def _extract_file_diff(diff_context: str, file_path: str) -> str:
     return diff_context[:1000] if diff_context else ""
 
 
-# 重构说明：_parse_intent_analysis_response_from_dict 函数已被移除
-# 现在使用 PydanticOutputParser 直接解析为 FileAnalysis 模型
-# 这样可以：
-# 1. 自动验证所有字段类型（包括 RiskItem 中的 line_number）
-# 2. 自动处理嵌套的 RiskItem 列表验证
-# 3. 提供更好的错误信息
-# 4. 符合 LangGraph 标准做法
-
 def _parse_intent_analysis_response(response: str, file_path: str) -> FileAnalysis:
-    """Parse LLM response into FileAnalysis object.
-    
-    Args:
-        response: LLM response string.
-        file_path: Path to the analyzed file.
-    
-    Returns:
-        FileAnalysis object.
-    """
+    """解析 LLM 响应为 FileAnalysis 对象（PydanticOutputParser 失败时的回退方案）。"""
     try:
         # Try to parse as JSON first
         response_clean = response.strip()
@@ -261,20 +211,15 @@ def _parse_intent_analysis_response(response: str, file_path: str) -> FileAnalys
             potential_risks = []
             for risk_data in potential_risks_data:
                 try:
-                    # 修复说明：line_number 是必需字段，不能为 None 或无效
-                    # 必须提供 [start, end] 格式，field_validator 会验证格式
                     line_number = risk_data.get("line_number")
                     if line_number is None:
                         logger.error(f"Missing line_number in risk item: {risk_data}, file_path: {file_path}")
                         continue
                     
-                    # field_validator 会验证 line_number 必须是 [start, end] 格式
-                    # 如果格式不正确会抛出 ValueError
-                    
                     risk_item = RiskItem(
                         risk_type=RiskType(risk_data.get("risk_type", "null_safety")),
                         file_path=risk_data.get("file_path", file_path),
-                        line_number=line_number,  # 必须是 [start, end] 格式
+                        line_number=line_number,
                         description=risk_data.get("description", ""),
                         confidence=risk_data.get("confidence", 0.5),
                         severity=risk_data.get("severity", "info"),

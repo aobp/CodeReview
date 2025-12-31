@@ -1,7 +1,6 @@
-"""Configuration loader for syntax checkers.
+"""语法检查器配置加载器。
 
-This module loads and manages configuration for syntax checkers,
-allowing users to enable/disable specific checkers via configuration file.
+加载和管理语法检查器的配置，允许用户通过配置文件启用/禁用特定检查器。
 """
 
 import os
@@ -16,14 +15,7 @@ except ImportError:
 
 
 class CheckerConfig:
-    """Configuration for a single checker.
-    
-    Attributes:
-        enabled: Whether the checker is enabled.
-        args: Command-line arguments for the checker.
-        severity_map: Optional mapping of error codes to severity levels.
-        use_default_config: Optional flag for using default config (checker-specific).
-    """
+    """单个检查器的配置。"""
     
     def __init__(
         self,
@@ -32,14 +24,7 @@ class CheckerConfig:
         severity_map: Optional[Dict[str, str]] = None,
         use_default_config: Optional[bool] = None
     ):
-        """Initialize checker configuration.
-        
-        Args:
-            enabled: Whether the checker is enabled.
-            args: Command-line arguments for the checker.
-            severity_map: Optional mapping of error codes to severity levels.
-            use_default_config: Optional flag for using default config (checker-specific).
-        """
+        """初始化检查器配置。"""
         self.enabled = enabled
         self.args = args
         self.severity_map = severity_map or {}
@@ -47,14 +32,10 @@ class CheckerConfig:
 
 
 class SyntaxCheckerConfig:
-    """Configuration manager for syntax checkers."""
+    """语法检查器配置管理器。"""
     
     def __init__(self, config_path: Optional[Path] = None):
-        """Initialize configuration loader.
-        
-        Args:
-            config_path: Path to configuration file. If None, uses default location.
-        """
+        """初始化配置加载器。"""
         if config_path is None:
             # Default to config.yaml in the syntax_checker directory
             config_path = Path(__file__).parent / "config.yaml"
@@ -64,7 +45,7 @@ class SyntaxCheckerConfig:
         self._load_config()
     
     def _load_config(self) -> None:
-        """Load configuration from YAML file."""
+        """从 YAML 文件加载配置。"""
         if not self.config_path.exists():
             # Use default configuration if file doesn't exist
             self._config = self._get_default_config()
@@ -83,11 +64,7 @@ class SyntaxCheckerConfig:
             self._config = self._get_default_config()
     
     def _get_default_config(self) -> Dict:
-        """Get default configuration.
-        
-        Returns:
-            Default configuration dictionary.
-        """
+        """获取默认配置。"""
         return {
             "python": {
                 "pylint": {
@@ -106,15 +83,7 @@ class SyntaxCheckerConfig:
         language: str,
         checker_name: str
     ) -> Optional[CheckerConfig]:
-        """Get configuration for a specific checker.
-        
-        Args:
-            language: Language name (e.g., "python").
-            checker_name: Checker name (e.g., "pylint", "ruff").
-        
-        Returns:
-            CheckerConfig object if found, None otherwise.
-        """
+        """获取特定检查器的配置。"""
         language_config = self._config.get(language, {})
         checker_config = language_config.get(checker_name, {})
         
@@ -138,32 +107,17 @@ class SyntaxCheckerConfig:
         language: str,
         checker_name: str
     ) -> bool:
-        """Check if a specific checker is enabled.
-        
-        Args:
-            language: Language name (e.g., "python").
-            checker_name: Checker name (e.g., "pylint", "ruff").
-        
-        Returns:
-            True if checker is enabled, False otherwise.
-        """
+        """检查特定检查器是否已启用。"""
         config = self.get_checker_config(language, checker_name)
         return config is not None and config.enabled
 
 
-# Global configuration instance
+# 全局配置实例
 _global_config: Optional[SyntaxCheckerConfig] = None
 
 
 def get_config(config_path: Optional[Path] = None) -> SyntaxCheckerConfig:
-    """Get global configuration instance.
-    
-    Args:
-        config_path: Optional path to configuration file.
-    
-    Returns:
-        SyntaxCheckerConfig instance.
-    """
+    """获取全局配置实例。"""
     global _global_config
     if _global_config is None:
         _global_config = SyntaxCheckerConfig(config_path)
@@ -171,18 +125,11 @@ def get_config(config_path: Optional[Path] = None) -> SyntaxCheckerConfig:
 
 
 def get_checker_config_key(checker_class_name: str) -> Tuple[str, str]:
-    """Get configuration key (language, checker_name) from checker class name.
+    """从检查器类名获取配置键 (language, checker_name)。
     
-    This function maps checker class names to their configuration keys.
-    For example:
+    例如：
     - PythonPylintChecker -> ("python", "pylint")
     - PythonRuffChecker -> ("python", "ruff")
-    
-    Args:
-        checker_class_name: Name of the checker class.
-    
-    Returns:
-        Tuple of (language, checker_name). Returns ("", "") if not found.
     """
     # Mapping from checker class names to config keys
     # Format: "ClassName" -> ("language", "checker_name")
@@ -196,18 +143,10 @@ def get_checker_config_key(checker_class_name: str) -> Tuple[str, str]:
 
 
 def create_checker_instance(checker_class, config: Optional[SyntaxCheckerConfig] = None):
-    """Create a checker instance with configuration if available.
+    """创建带配置的检查器实例（如果可用）。
     
-    This function attempts to load configuration for the checker and create
-    an instance with the appropriate parameters. If no configuration is found
-    or the checker doesn't support configuration, it creates a default instance.
-    
-    Args:
-        checker_class: The checker class to instantiate.
-        config: Optional SyntaxCheckerConfig instance. If None, uses global config.
-    
-    Returns:
-        An instance of the checker class.
+    此函数尝试加载检查器的配置并使用适当的参数创建实例。
+    如果未找到配置或检查器不支持配置，则创建默认实例。
     """
     if config is None:
         config = get_config()
