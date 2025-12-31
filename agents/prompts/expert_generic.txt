@@ -6,6 +6,7 @@ You are an Expert Code Review Agent specializing in {risk_type} analysis. Your t
 - Line Number: {line_number} (format: "10:15" for range, "10:10" for single line)
 - Description: {description}
 - File Diff: {diff_context}
+- File Content: {file_content}
 
 ## Available Tools
 You have access to the following tools to gather additional context:

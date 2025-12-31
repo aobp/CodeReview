@@ -4,8 +4,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Tuple
 
-from util.git_utils import get_git_diff
-from util.pr_utils import load_diff_from_file
+from util.git_utils import get_git_diff, get_git_info
 
 
 def validate_repo_path(repo_path: Path) -> Path:
@@ -37,9 +36,9 @@ def load_diff_from_args(
     args,
     repo_path: Path
 ) -> Tuple[str, Optional[str], Optional[str]]:
-    """Load diff content based on command line arguments.
+    """Load diff content from Git based on command line arguments.
     
-    This function handles both file-based and Git-based diff loading modes.
+    This function loads Git diff between base and head branches/commits.
     It validates arguments and provides helpful error messages.
     
     Args:
@@ -49,67 +48,41 @@ def load_diff_from_args(
     Returns:
         A tuple of (diff_content, branch, commit).
         - diff_content: The diff content as a string.
-        - branch: Git branch name (if applicable), None otherwise.
-        - commit: Git commit hash (if applicable), None otherwise.
+        - branch: Git branch name from head.
+        - commit: Git commit hash from head.
     
     Raises:
         SystemExit: If arguments are invalid or diff cannot be loaded.
     """
-    pr_diff = None
-    branch = None
-    commit = None
-    
-    # Check if both --diff and --base are provided (warn that --diff takes priority)
-    if args.diff and args.base:
-        print(f"⚠️  Warning: Both --diff and --base provided. Using --diff (file mode) and ignoring --base.")
-    
-    if args.diff:
-        # Mode B: Local diff file (takes priority)
-        diff_path = Path(args.diff)
-        if not diff_path.is_absolute():
-            # If relative, try relative to repo_path first, then current directory
-            repo_relative = repo_path / diff_path
-            if repo_relative.exists():
-                diff_path = repo_relative
-            else:
-                diff_path = diff_path.resolve()
-        
-        print(f"\n📂 Loading diff from file: {diff_path}")
-        try:
-            pr_diff = load_diff_from_file(diff_path)
-            print(f"✅ Diff loaded ({len(pr_diff)} characters)")
-        except Exception as e:
-            print(f"❌ Error loading diff file: {e}")
-            sys.exit(1)
-        
-        # Try to get current Git info for asset key generation
-        from util.git_utils import get_git_info
-        branch, commit = get_git_info(repo_path)
-    
-    elif args.base:
-        # Mode A: Git branch diff
-        print(f"\n🔀 Getting Git diff: {args.base}...{args.head}")
-        try:
-            pr_diff = get_git_diff(repo_path, args.base, args.head)
-            if not pr_diff or len(pr_diff.strip()) == 0:
-                print(f"⚠️  Warning: Git diff is empty. No changes found between {args.base} and {args.head}")
-            else:
-                print(f"✅ Git diff retrieved ({len(pr_diff)} characters)")
-        except Exception as e:
-            print(f"❌ Error getting Git diff: {e}")
-            sys.exit(1)
-        
-        # Get Git info from head branch for asset key generation
-        from util.git_utils import get_git_info
-        branch, commit = get_git_info(repo_path, args.head)
-    
-    else:
-        # Neither --diff nor --base provided
-        print("❌ Error: Must provide either --base (for Git mode) or --diff (for file mode)")
+    # Validate that --base and --head are provided
+    if not args.base:
+        print("❌ Error: --base is required")
         print("   Examples:")
         print("     python main.py --repo ./project --base main --head feature-x")
-        print("     python main.py --repo ./project --diff ./changes.diff")
+        print("     python main.py --repo ./project --base main --head HEAD")
         sys.exit(1)
+    
+    if not args.head:
+        print("❌ Error: --head is required")
+        print("   Examples:")
+        print("     python main.py --repo ./project --base main --head feature-x")
+        print("     python main.py --repo ./project --base main --head HEAD")
+        sys.exit(1)
+    
+    # Get Git diff
+    print(f"\n🔀 Getting Git diff: {args.base}...{args.head}")
+    try:
+        pr_diff = get_git_diff(repo_path, args.base, args.head)
+        if not pr_diff or len(pr_diff.strip()) == 0:
+            print(f"⚠️  Warning: Git diff is empty. No changes found between {args.base} and {args.head}")
+        else:
+            print(f"✅ Git diff retrieved ({len(pr_diff)} characters)")
+    except Exception as e:
+        print(f"❌ Error getting Git diff: {e}")
+        sys.exit(1)
+    
+    # Get Git info from head branch for asset key generation
+    branch, commit = get_git_info(repo_path, args.head)
     
     if not pr_diff:
         print("❌ Error: No diff content available")

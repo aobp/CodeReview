@@ -3,6 +3,7 @@
 ## Input
 - **File Path**: {file_path}
 - **File Diff**: {file_diff}
+- **File Content**: {file_content}
 
 ## Task
 请分析该文件并提供以下内容：

@@ -11,6 +11,7 @@
 - Line Number: {line_number} (format: "10:15" for range, "10:10" for single line)
 - Description: {description}
 - File Diff: {diff_context}
+- File Content: {file_content}
 
 ## Available Tools
 你可以使用以下工具来获取更多上下文信息：

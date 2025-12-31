@@ -3,7 +3,7 @@
 This package contains utility functions for:
 - Logging: Agent observations and tool results
 - Git operations: Repository information and diff generation
-- PR processing: Diff file loading and result formatting
+- PR processing: Result formatting
 - Argument validation: Command line argument validation and diff loading
 - Diff parsing: Git diff parsing with line number mapping
 """
@@ -16,9 +16,9 @@ from util.git_utils import (
     extract_files_from_diff,
     generate_asset_key,
     get_repo_name,
+    ensure_head_version,
 )
 from util.pr_utils import (
-    load_diff_from_file,
     print_review_results,
 )
 from util.arg_utils import (
@@ -40,7 +40,7 @@ __all__ = [
     "extract_files_from_diff",
     "generate_asset_key",
     "get_repo_name",
-    "load_diff_from_file",
+    "ensure_head_version",
     "print_review_results",
     "validate_repo_path",
     "load_diff_from_args",

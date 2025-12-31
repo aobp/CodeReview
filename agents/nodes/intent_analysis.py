@@ -21,6 +21,7 @@ from core.llm import LLMProvider
 from core.langchain_llm import LangChainLLMAdapter
 from agents.prompts import render_prompt_template
 from util.diff_utils import generate_context_text_for_file
+from util.file_utils import read_file_content
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,9 @@ async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
                 # TODO： 思考一下，diff要不要传入remove行
                 file_diff = _extract_file_diff(diff_context, file_path)
                 
+                # 读取文件内容
+                file_content = read_file_content(file_path, config)
+                
                 # 使用 LCEL 语法创建链：prompt | llm | parser
                 # 重构说明：由于 render_prompt_template 已经渲染了模板（包含 JSON 示例），
                 # 我们不能使用 ChatPromptTemplate（它会尝试解析 JSON 中的大括号作为变量）
@@ -102,9 +106,9 @@ async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
                 rendered_prompt = render_prompt_template(
                     "intent_analysis",
                     file_path=file_path,
-                    file_diff=file_diff
+                    file_diff=file_diff,
+                    file_content=file_content
                 )
-                # TODO: 思考是不是需要把文件内容也传入
                 
                 # 重构说明：使用 PydanticOutputParser 直接解析为 FileAnalysis 模型
                 # 这是 LangGraph 标准做法，替代手动 JSON 解析

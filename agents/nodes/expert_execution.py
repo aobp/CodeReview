@@ -15,6 +15,7 @@ from core.config import Config
 from tools.repo_tools import FetchRepoMapTool
 from tools.file_tools import ReadFileTool
 from agents.prompts import render_prompt_template
+from util.file_utils import read_file_content
 
 logger = logging.getLogger(__name__)
 
@@ -266,6 +267,10 @@ async def _process_risk_item(
         # Format line number range for display in prompts
         line_number_str = format_line_number(risk_item.line_number)
         
+        # Get config from global_state to read file content
+        config = global_state.get("metadata", {}).get("config")
+        file_content = read_file_content(risk_item.file_path, config) if config else ""
+        
         try:
             initial_prompt = render_prompt_template(
                 f"expert_{risk_type_str}",
@@ -275,6 +280,7 @@ async def _process_risk_item(
                 line_number=line_number_str,  # Format as string for prompt display
                 description=risk_item.description,
                 diff_context=_extract_file_diff(diff_context, risk_item.file_path),
+                file_content=file_content,
                 available_tools=", ".join(tool_dict.keys()),
                 validation_logic_examples=""  # 占位符，用户会在模板文件中手动填写内容
             )
@@ -288,6 +294,7 @@ async def _process_risk_item(
                 line_number=line_number_str,  # Format as string for prompt display
                 description=risk_item.description,
                 diff_context=_extract_file_diff(diff_context, risk_item.file_path),
+                file_content=file_content,
                 available_tools=", ".join(tool_dict.keys())
             )
         

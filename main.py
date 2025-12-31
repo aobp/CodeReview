@@ -8,16 +8,6 @@ This script demonstrates the complete workflow:
 5. Display review results
 """
 
-# python main.py --repo C:\Users\dell\sentry-cursor --base master --head performance-enhancement-complete
-# python main.py --repo C:\Users\dell\sentry-cursor --base performance-optimization-baseline --head performance-enhancement-complete
-# python main.py --repo C:\Users\dell\sentry-cursor --base master --head error-upsampling-race-condition
-# python main.py --repo C:\Users\dell\sentry-cursor --base oauth-state-vulnerable --head oauth-state-secure
-# python main.py --repo C:\Users\dell\sentry-cursor --base replays-delete-vulnerable --head replays-delete-stable
-# python main.py --repo C:\Users\dell\sentry-cursor --base span-flusher-stable --head span-flusher-multiprocess
-# python main.py --repo E:\repo\grafana-cursor --base enhance-anonymous-access --head implement-device-limits
-# python main.py --repo E:\repo\grafana-cursor --base cache-optimization-baseline --head authz-service-improve-caching-pr
-# python main.py --repo E:\repo\grafana-cursor --base main --head plugins/rename-instrumentation-middleware-to-metrics-middleware
-
 
 import asyncio
 import argparse
@@ -38,6 +28,7 @@ from util import (
     load_diff_from_args,
     print_review_results,
     validate_repo_path,
+    ensure_head_version,
 )
 from util.git_utils import extract_files_from_diff, get_changed_files
 
@@ -106,7 +97,7 @@ async def run_syntax_checking(
 ) -> List[dict]:
     """Run syntax/lint checking on changed files.
     
-    This function determines which files have changed (either from Git or from diff),
+    This function determines which files have changed from Git,
     then runs appropriate syntax checkers on those files.
     
     Args:
@@ -119,21 +110,13 @@ async def run_syntax_checking(
         file, line, message, severity, code.
     """
     try:
-        # Determine changed files
-        if args.diff:
-            # Mode: --diff-file - extract files from diff content
+        # Get changed files from Git
+        try:
+            changed_files = get_changed_files(repo_path, args.base, args.head)
+        except Exception as e:
+            print(f"  ⚠️  Warning: Could not get changed files from Git: {e}")
+            # Fallback: try to extract from diff
             changed_files = extract_files_from_diff(pr_diff)
-        elif args.base:
-            # Mode: Git branches - use git command
-            try:
-                changed_files = get_changed_files(repo_path, args.base, args.head)
-            except Exception as e:
-                print(f"  ⚠️  Warning: Could not get changed files from Git: {e}")
-                # Fallback: try to extract from diff
-                changed_files = extract_files_from_diff(pr_diff)
-        else:
-            # Should not happen (validated earlier), but handle gracefully
-            changed_files = []
         
         if not changed_files:
             return []
@@ -244,14 +227,11 @@ def parse_arguments() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
         Examples:
-        # Git branch mode: compare feature-x branch with main
+        # Compare feature-x branch with main
         python main.py --repo ./project --base main --head feature-x
         
-        # Git branch mode: compare current HEAD with main
-        python main.py --repo ./project --base main
-        
-        # Local diff file mode
-        python main.py --repo ./project --diff ./changes.diff
+        # Compare current HEAD with main
+        python main.py --repo ./project --base main --head HEAD
                 """
     )
     
@@ -262,26 +242,18 @@ def parse_arguments() -> argparse.Namespace:
         help="Path to the repository to review (required)"
     )
     
-    # Diff source: either Git branches or local file
     parser.add_argument(
         "--base",
         type=str,
-        default=None,
-        help="Target branch for Git diff mode (e.g., 'main', 'master')"
-    )
-    
-    parser.add_argument(
-        "--diff",
-        type=str,
-        default=None,
-        help="Path to a local .diff file (alternative to --base/--head). Takes priority if both are provided."
+        required=True,
+        help="Target branch for Git diff (e.g., 'main', 'master')"
     )
     
     parser.add_argument(
         "--head",
         type=str,
-        default="HEAD",
-        help="Source branch or commit for Git diff mode (default: HEAD). Only used with --base."
+        required=True,
+        help="Source branch or commit for Git diff (e.g., 'feature-x', 'HEAD')"
     )
     
     parser.add_argument(
@@ -312,7 +284,16 @@ async def main():
     print(f"📝 Configuration loaded: LLM Provider = {config.llm.provider}")
     print(f"📁 Workspace root: {config.system.workspace_root}")
     
-    # Load diff: either from Git or from file (includes argument validation)
+    # Ensure repository is on HEAD version (not base version) before review
+    try:
+        print(f"\n🔀 Ensuring repository is on HEAD version ({args.head})...")
+        ensure_head_version(repo_path, args.head)
+        print(f"✅ Repository is on HEAD version")
+    except Exception as e:
+        print(f"⚠️  Warning: Could not ensure HEAD version: {e}")
+        print(f"   Continuing with current version...")
+    
+    # Load diff from Git (includes argument validation)
     pr_diff, branch, commit = load_diff_from_args(args, repo_path)
     
     # Step 1: Initialize Storage (DAO layer)
@@ -361,19 +342,15 @@ async def main():
     
     # Get changed files list for the workflow
     try:
-        if args.diff:
-            changed_files = extract_files_from_diff(pr_diff)
-        elif args.base:
-            try:
-                changed_files = get_changed_files(repo_path, args.base, args.head)
-            except Exception as e:
-                print(f"  ⚠️  Warning: Could not get changed files from Git: {e}")
-                changed_files = extract_files_from_diff(pr_diff)
-        else:
-            changed_files = extract_files_from_diff(pr_diff)
+        changed_files = get_changed_files(repo_path, args.base, args.head)
     except Exception as e:
-        print(f"  ⚠️  Warning: Could not extract changed files: {e}")
-        changed_files = []
+        print(f"  ⚠️  Warning: Could not get changed files from Git: {e}")
+        # Fallback: try to extract from diff
+        try:
+            changed_files = extract_files_from_diff(pr_diff)
+        except Exception as e2:
+            print(f"  ⚠️  Warning: Could not extract changed files from diff: {e2}")
+            changed_files = []
     
     if not changed_files:
         print("  ⚠️  Warning: No changed files detected, workflow may not produce results")

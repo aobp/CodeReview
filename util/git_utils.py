@@ -1,10 +1,13 @@
 """Git repository utilities for branch, commit, and diff operations."""
 
 import hashlib
+import logging
 import re
 import subprocess
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 def get_git_info(repo_path: Path, ref: str = "HEAD") -> Tuple[Optional[str], Optional[str]]:
@@ -653,3 +656,143 @@ def get_repo_name(workspace_root: Path) -> str:
         return "current_workspace"
     
     return repo_name
+
+
+def ensure_head_version(repo_path: Path, head: str = "HEAD") -> None:
+    """Ensure the repository is checked out to the HEAD version (not base version).
+    
+    This function checks if the repository is currently on the head branch/commit,
+    and if not, it will checkout to the head version. This ensures that code review
+    is performed on the correct version of the code.
+    
+    Args:
+        repo_path: Path to the Git repository.
+        head: The head branch or commit to checkout (default: "HEAD").
+    
+    Raises:
+        ValueError: If repo_path is not a valid Git repository.
+        RuntimeError: If checkout fails or if there are uncommitted changes that prevent checkout.
+    """
+    repo_path = Path(repo_path).resolve()
+    
+    if not repo_path.exists():
+        raise ValueError(f"Repository path does not exist: {repo_path}")
+    
+    if not repo_path.is_dir():
+        raise ValueError(f"Repository path must be a directory: {repo_path}")
+    
+    # Check if it's a Git repository
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=repo_path,
+            capture_output=True,
+            check=True
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise ValueError(f"Not a Git repository: {repo_path}")
+    
+    # Get current branch/commit
+    try:
+        current_ref_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8"
+        )
+        current_ref = current_ref_result.stdout.strip()
+        
+        # Get current commit hash
+        current_commit_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8"
+        )
+        current_commit = current_commit_result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"Could not get current Git reference: {e}")
+        current_ref = None
+        current_commit = None
+    
+    # Get head branch/commit
+    try:
+        head_ref_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", head],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8"
+        )
+        head_ref = head_ref_result.stdout.strip()
+        
+        # Get head commit hash
+        head_commit_result = subprocess.run(
+            ["git", "rev-parse", head],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8"
+        )
+        head_commit = head_commit_result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"Could not resolve head reference '{head}': {e}")
+        raise ValueError(f"Invalid head reference: {head}")
+    
+    # Check if already on head version
+    if current_commit == head_commit:
+        logger.info(f"Repository is already on head version: {head_ref} ({head_commit[:12]})")
+        return
+    
+    # Check for uncommitted changes
+    try:
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8"
+        )
+        has_changes = bool(status_result.stdout.strip())
+        
+        if has_changes:
+            logger.warning(f"Repository has uncommitted changes. Stashing before checkout...")
+            # Stash uncommitted changes
+            stash_result = subprocess.run(
+                ["git", "stash", "push", "-m", "Code review agent: auto-stash before checkout"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                check=False,
+                encoding="utf-8"
+            )
+            if stash_result.returncode != 0:
+                raise RuntimeError(
+                    f"Cannot checkout to head version: uncommitted changes exist and stash failed. "
+                    f"Please commit or stash your changes manually."
+                )
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"Could not check Git status: {e}")
+    
+    # Checkout to head version
+    try:
+        logger.info(f"Checking out to head version: {head_ref} ({head_commit[:12]})")
+        checkout_result = subprocess.run(
+            ["git", "checkout", head],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8"
+        )
+        logger.info(f"Successfully checked out to head version: {head_ref} ({head_commit[:12]})")
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode("utf-8") if e.stderr else str(e)
+        raise RuntimeError(f"Failed to checkout to head version '{head}': {error_msg}")
