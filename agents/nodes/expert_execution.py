@@ -202,11 +202,6 @@ async def run_expert_group(
                     system_prompt = render_prompt_template(
                         f"expert_{risk_type_str}",
                         risk_type=risk_type_str,
-                        file_path=task.file_path,
-                        line_number=line_number_str,
-                        description=task.description,
-                        diff_context=extract_file_diff(diff_context, task.file_path),
-                        file_content=file_content,
                         available_tools=available_tools_text,
                         validation_logic_examples=""
                     )
@@ -215,11 +210,6 @@ async def run_expert_group(
                     system_prompt = render_prompt_template(
                         "expert_generic",
                         risk_type=risk_type_str,
-                        file_path=task.file_path,
-                        line_number=line_number_str,
-                        description=task.description,
-                        diff_context=extract_file_diff(diff_context, task.file_path),
-                        file_content=file_content,
                         available_tools=available_tools_text
                     )
                 
@@ -234,7 +224,9 @@ async def run_expert_group(
                 result_dict = await run_expert_analysis(
                     graph=expert_graph,
                     risk_item=task,
-                    system_prompt=system_prompt
+                    system_prompt=system_prompt,
+                    diff_context=extract_file_diff(diff_context, task.file_path),
+                    file_content=file_content
                 )
                 
                 if not result_dict:
@@ -243,7 +235,7 @@ async def run_expert_group(
                 
                 # 将结果转换为 RiskItem
                 validated_item = RiskItem(
-                    risk_type=RiskType(result_dict.get("risk_type", task.risk_type.value)),
+                    risk_type=RiskType(task.risk_type.value),  # TODO: 直接用task的类型，因为模型可能吧类型关键字改掉
                     file_path=result_dict.get("file_path", task.file_path),
                     line_number=result_dict.get("line_number", task.line_number),
                     description=result_dict.get("description", task.description),

@@ -5,27 +5,10 @@
 - **本质**：代码不符合语言规范或存在明显的编译/运行时错误。
 - **检测视角**：静态分析工具（如 Pylint, Ruff, ESLint）的检测结果。
 
-## Input
-以下所有字段都是针对**当前正在分析的文件**（{file_path}）的信息：
+## 你的任务
+验证和分析代码审查中识别的风险项。
 
-- **Risk Type** ({risk_type}): 风险类型，标识当前需要分析的风险类别
-- **File Path** ({file_path}): 当前分析的文件路径（相对于仓库根目录）
-- **Line Number** ({line_number}): 风险所在的行号范围，格式为 "10:15"（多行）或 "10:10"（单行）
-- **Description** ({description}): 风险描述，说明检测到的潜在问题
-- **File Diff** ({diff_context}): 当前文件在本次变更中的 diff 片段，包含带行号的代码变更上下文（新增/修改/删除的行）
-- **File Content** ({file_content}): 当前文件的完整内容（HEAD 版本），用于理解完整的代码上下文
-
-## Available Tools
-你可以使用以下工具来获取更多上下文信息：
-{available_tools}
-
-**重要提示**：如果需要更多信息，请直接调用工具（使用标准的工具调用格式）。验证完风险后，请仅输出最终的 JSON 结果。
-
-## 验证逻辑与样例演示
-
-{validation_logic_examples}
-
-## Task
+## 分析方法
 1. **假设-验证过程**：先假设静态分析工具的警告成立，再通过工具寻找反证（如实际导入、类型定义、变量作用域）。若无反证，则判定为真。
 2. **区分真实错误与误报**：
    - **真实错误**：本地模块/函数/变量未定义、语法错误、类型不匹配等
@@ -39,21 +22,33 @@
    - 还是代码风格问题（不会影响运行）
 5. **下结论**：基于证据给出最终判断。
 
-## Output Format
-After gathering context (if needed), return a JSON object:
+## 可用工具
+你可以使用以下工具来获取更多上下文信息：
+{available_tools}
+
+**重要提示**：如果需要更多信息，请直接调用工具（使用标准的工具调用格式）。验证完风险后，请仅输出最终的 JSON 结果。获取足够信息后，立即停止调用工具并输出 JSON。
+
+## 验证逻辑与样例演示
+
+{validation_logic_examples}
+
+## 输出格式
+收集上下文后（如需要），**必须**返回以下 JSON 格式：
 ```json
 {{
-    "risk_type": "{risk_type}",
-    "file_path": "{file_path}",
-    "line_number": [10, 15],  // REQUIRED: Array [start, end] for line range. For single line, use [10, 10]
-    "description": "Updated/validated description of the risk",
+    "risk_type": "<从用户输入中获取的风险类型>",
+    "file_path": "<从用户输入中获取的文件路径>",
+    "line_number": [起始行, 结束行],  // 必需：数组 [start, end] 表示行号范围。单行使用 [line, line]
+    "description": "更新后的风险描述",
     "confidence": 0.8,
     "severity": "error|warning|info",
-    "suggestion": "Specific, actionable suggestion for fixing the risk"
+    "suggestion": "具体的修复建议"
 }}
 ```
 
-## Guidelines
+**关键**：`risk_type`、`file_path` 和 `line_number` 的值应该从用户的输入消息中提取，不要编造这些值。
+
+## 指导原则
 - **验证优先**：使用"假设-验证"方法，通过工具寻找反证
 - **区分本地与第三方**：只报告本地模块/函数/变量的错误，忽略第三方库未导入的警告
 - **检查实际代码**：使用工具读取文件内容，验证错误是否真实存在
@@ -63,6 +58,7 @@ After gathering context (if needed), return a JSON object:
   - 确认是真实错误：confidence ≥ 0.7
   - 第三方库误报：confidence ≤ 0.3，建议 severity 降为 "info" 或忽略
   - 需要更多信息：confidence = 0.5
+- **工具调用后停止**：获取足够信息后，立即输出 JSON，不要继续调用工具
 
 ## 常见误报模式
 - **第三方库未导入**：如 `Unable to import 'rapidjson'`, `Unable to import 'arroyo.*'` 等

@@ -123,8 +123,12 @@ class ExpertState(TypedDict):
         messages: 消息历史（LangGraph 标准）。
         risk_context: 待分析的风险项（输入）。
         final_result: 最终验证结果（输出，JSON 字典）。
+        diff_context: 文件的 diff 上下文（可选）。
+        file_content: 文件的完整内容（可选）。
     """
     messages: Annotated[List[AnyMessage], add_messages]
     risk_context: RiskItem  # 输入：待分析的风险项
     final_result: Optional[dict]  # 输出：最终验证结果(JSON)
+    diff_context: Optional[str]  # 文件的 diff 上下文
+    file_content: Optional[str]  # 文件的完整内容
 
