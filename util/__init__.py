@@ -15,6 +15,8 @@ from util.git_utils import (
 )
 from util.pr_utils import (
     print_review_results,
+    make_results_serializable,
+    serialize_messages,
 )
 from util.arg_utils import (
     validate_repo_path,
@@ -38,6 +40,8 @@ __all__ = [
     "get_repo_name",
     "ensure_head_version",
     "print_review_results",
+    "make_results_serializable",
+    "serialize_messages",
     "validate_repo_path",
     "load_diff_from_args",
     "parse_diff_with_line_numbers",

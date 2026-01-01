@@ -40,14 +40,14 @@ def save_observations_to_log(
 ) -> Optional[Path]:
     """将智能体观察保存到日志文件。
     
-    日志文件结构：log/repo_name/model_name/timestamp/observations.log
+    只保存 expert_analyses.log，不再保存 observations.log。
+    日志文件结构：log/repo_name/model_name/timestamp/expert_analyses.log
     """
     metadata = results.get("metadata", {})
-    observations = metadata.get("agent_observations", [])
     expert_analyses = metadata.get("expert_analyses", [])
     
-    # If no observations and no expert analyses, return None
-    if not observations and not expert_analyses:
+    # If no expert analyses, return None
+    if not expert_analyses:
         return None
     
     # Get log directory
@@ -55,43 +55,6 @@ def save_observations_to_log(
     repo_name = get_repo_name(workspace_root).replace("/", "_").replace("\\", "_").replace("..", "")
     model_name = metadata.get("config_provider", config.llm.provider) or "unknown"
     model_name = model_name.replace("/", "_").replace("\\", "_")
-    
-    # Save observations to log file (if any)
-    log_file = log_dir / "observations.log"
-    has_content = False
-    
-    with open(log_file, "w", encoding="utf-8") as f:
-        f.write(f"Agent Observations Log\n")
-        f.write(f"{'=' * 80}\n")
-        f.write(f"Repository: {repo_name}\n")
-        f.write(f"Model: {model_name}\n")
-        f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-        f.write(f"{'=' * 80}\n\n")
-        
-        # Save agent observations (old format)
-        if observations:
-            has_content = True
-            f.write(f"Agent Observations: {len(observations)}\n")
-            f.write(f"{'=' * 80}\n\n")
-            for i, obs in enumerate(observations, 1):
-                f.write(f"Observation {i}:\n")
-                f.write(f"{'-' * 80}\n")
-                f.write(f"{obs}\n")
-                f.write(f"\n")
-            
-            # Also save tool results if available
-            tool_results = metadata.get("agent_tool_results", [])
-            if tool_results:
-                f.write(f"\n{'=' * 80}\n")
-                f.write(f"Tool Results: {len(tool_results)}\n")
-                f.write(f"{'=' * 80}\n\n")
-                for i, tr in enumerate(tool_results, 1):
-                    f.write(f"Tool Call {i}:\n")
-                    f.write(f"{'-' * 80}\n")
-                    f.write(f"Tool: {tr.get('tool', 'unknown')}\n")
-                    f.write(f"Input: {json.dumps(tr.get('input', {}), indent=2, ensure_ascii=False)}\n")
-                    f.write(f"Result: {json.dumps(tr.get('result', {}), indent=2, ensure_ascii=False)}\n")
-                    f.write(f"\n")
     
     # Save expert analyses to separate file
     if expert_analyses:
@@ -102,122 +65,128 @@ def save_observations_to_log(
             f.write(f"Repository: {repo_name}\n")
             f.write(f"Model: {model_name}\n")
             f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-            f.write(f"Total Expert Analyses: {len(expert_analyses)}\n")
             f.write(f"{'=' * 80}\n\n")
             
+            # Print worklist summary
+            work_list = results.get("work_list", [])
+            expert_tasks = results.get("expert_tasks", {})
+            total_risks = len(work_list)
+            
+            # Count risks by type
+            risk_counts = {}
+            for risk in work_list:
+                risk_type = risk.get("risk_type", "unknown")
+                risk_counts[risk_type] = risk_counts.get(risk_type, 0) + 1
+            
+            f.write(f"Worklist Summary\n")
+            f.write(f"{'=' * 80}\n")
+            f.write(f"Total Risks: {total_risks}\n")
+            f.write(f"Risk Distribution:\n")
+            for risk_type, count in sorted(risk_counts.items()):
+                f.write(f"  - {risk_type}: {count}\n")
+            f.write(f"{'=' * 80}\n\n")
+            
+            # Print each expert analysis
             for i, analysis in enumerate(expert_analyses, 1):
                 f.write(f"Expert Analysis {i}:\n")
                 f.write(f"{'=' * 80}\n")
                 f.write(f"Risk Type: {analysis.get('risk_type', 'unknown')}\n")
                 f.write(f"File: {analysis.get('file_path', 'unknown')}\n")
-                f.write(f"Line: {analysis.get('line_number', 0)}\n")
+                line_number = analysis.get('line_number', [0, 0])
+                if isinstance(line_number, list) and len(line_number) == 2:
+                    if line_number[0] == line_number[1]:
+                        line_str = str(line_number[0])
+                    else:
+                        line_str = f"{line_number[0]}:{line_number[1]}"
+                else:
+                    line_str = str(line_number)
+                f.write(f"Line: {line_str}\n")
+                
+                # Add description
+                risk_item = analysis.get("risk_item", {})
+                description = risk_item.get("description", "")
+                if description:
+                    f.write(f"Description: {description}\n")
+                
                 f.write(f"{'-' * 80}\n\n")
                 
-                # Original risk item
-                risk_item = analysis.get("risk_item", {})
-                f.write(f"Original Risk Item:\n")
-                f.write(f"{json.dumps(risk_item, indent=2, ensure_ascii=False)}\n\n")
+                # 1. Print analysis result first
+                result = analysis.get("result", {})
+                if result:
+                    f.write(f"Analysis Result:\n")
+                    f.write(f"{json.dumps(result, indent=2, ensure_ascii=False)}\n\n")
                 
-                # Multi-turn conversation (new format)
-                conversation_turns = analysis.get("conversation_turns", [])
-                if conversation_turns:
-                    f.write(f"Conversation Turns ({len(conversation_turns)}):\n")
-                    f.write(f"{'=' * 80}\n\n")
-                    
-                    for turn_num, turn in enumerate(conversation_turns, 1):
-                        f.write(f"Turn {turn_num} (Iteration {turn.get('iteration', turn_num)}):\n")
-                        f.write(f"{'-' * 80}\n\n")
-                        
-                        # Prompt for this turn
-                        # prompt = turn.get("prompt", "")
-                        # if prompt:
-                        #     f.write(f"Prompt:\n")
-                        #     f.write(f"{prompt}\n\n")
-                        
-                        # Response
-                        response = turn.get("response", "")
-                        if response:
-                            f.write(f"LLM Response:\n")
-                            f.write(f"{response}\n\n")
-                        
-                        # Tool calls in this turn
-                        tool_calls = turn.get("tool_calls", [])
-                        if tool_calls:
-                            f.write(f"Tool Calls ({len(tool_calls)}):\n")
-                            for j, tool_call in enumerate(tool_calls, 1):
-                                f.write(f"  Tool Call {j}:\n")
-                                f.write(f"    Tool: {tool_call.get('tool', 'unknown')}\n")
-                                f.write(f"    Input: {json.dumps(tool_call.get('input', {}), indent=6, ensure_ascii=False)}\n")
-                            f.write(f"\n")
-                        
-                        # Tool results in this turn
-                        tool_results = turn.get("tool_results", {})
-                        if tool_results:
-                            f.write(f"Tool Results:\n")
-                            for tool_name, tool_result in tool_results.items():
-                                f.write(f"  {tool_name}:\n")
-                                f.write(f"    {json.dumps(tool_result, indent=6, ensure_ascii=False)}\n")
-                            f.write(f"\n")
-                        
-                        f.write(f"\n")
-                else:
-                    # Legacy format (single turn) - for backward compatibility
-                    prompt = analysis.get("prompt", "")
-                    if prompt:
-                        f.write(f"Prompt:\n")
-                        f.write(f"{'-' * 80}\n")
-                        f.write(f"{prompt}\n\n")
-                    
-                    response = analysis.get("response", "")
-                    if response:
-                        f.write(f"Initial LLM Response:\n")
-                        f.write(f"{'-' * 80}\n")
-                        f.write(f"{response}\n\n")
-                    
-                    tool_calls = analysis.get("tool_calls", [])
-                    if tool_calls:
-                        f.write(f"Tool Calls ({len(tool_calls)}):\n")
-                        f.write(f"{'-' * 80}\n")
-                        for j, tool_call in enumerate(tool_calls, 1):
-                            f.write(f"Tool Call {j}:\n")
-                            f.write(f"  Tool: {tool_call.get('tool', 'unknown')}\n")
-                            f.write(f"  Input: {json.dumps(tool_call.get('input', {}), indent=4, ensure_ascii=False)}\n")
-                            f.write(f"\n")
-                    
-                    tool_results = analysis.get("tool_results", {})
-                    if tool_results:
-                        f.write(f"Tool Results:\n")
-                        f.write(f"{'-' * 80}\n")
-                        for tool_name, tool_result in tool_results.items():
-                            f.write(f"{tool_name}:\n")
-                            f.write(f"{json.dumps(tool_result, indent=4, ensure_ascii=False)}\n")
-                            f.write(f"\n")
-                
-                # Final response
-                final_response = analysis.get("final_response", "")
-                if final_response:
-                    f.write(f"{'=' * 80}\n")
-                    f.write(f"Final LLM Response:\n")
-                    f.write(f"{'-' * 80}\n")
-                    f.write(f"{final_response}\n\n")
-                
-                # Validated item
                 validated_item = analysis.get("validated_item")
                 if validated_item:
                     f.write(f"Validated Risk Item:\n")
-                    f.write(f"{'-' * 80}\n")
                     f.write(f"{json.dumps(validated_item, indent=2, ensure_ascii=False)}\n\n")
                 
-                # Error (if any)
-                error = analysis.get("error")
-                if error:
-                    f.write(f"Error:\n")
-                    f.write(f"{'-' * 80}\n")
-                    f.write(f"{error}\n\n")
+                # 2. Print conversation history
+                messages = analysis.get("messages", [])
+                if messages:
+                    f.write(f"Conversation History ({len(messages)} messages):\n")
+                    f.write(f"{'=' * 80}\n\n")
+                    
+                    for msg_idx, msg in enumerate(messages, 1):
+                        # Get message type
+                        msg_type = type(msg).__name__
+                        
+                        if msg_type == "SystemMessage":
+                            f.write(f"Message {msg_idx} [System]:\n")
+                            f.write(f"{'-' * 80}\n")
+                            content = getattr(msg, 'content', str(msg))
+                            f.write(f"{content}\n\n")
+                        
+                        elif msg_type == "HumanMessage":
+                            f.write(f"Message {msg_idx} [Human]:\n")
+                            f.write(f"{'-' * 80}\n")
+                            content = getattr(msg, 'content', str(msg))
+                            f.write(f"{content}\n\n")
+                        
+                        elif msg_type == "AIMessage":
+                            f.write(f"Message {msg_idx} [Assistant]:\n")
+                            f.write(f"{'-' * 80}\n")
+                            content = getattr(msg, 'content', str(msg))
+                            if content:
+                                f.write(f"Content:\n{content}\n")
+                            # 不输出 tool_calls，因为工具调用信息已经在 ToolMessage 的 content 中
+                            f.write(f"\n")
+                        
+                        elif msg_type == "ToolMessage":
+                            f.write(f"Message {msg_idx} [Tool]:\n")
+                            f.write(f"{'-' * 80}\n")
+                            tool_name = getattr(msg, 'name', 'unknown')
+                            content = getattr(msg, 'content', str(msg))
+                            tool_call_id = getattr(msg, 'tool_call_id', 'unknown')
+                            
+                            f.write(f"Tool: {tool_name}\n")
+                            f.write(f"Tool Call ID: {tool_call_id}\n")
+                            f.write(f"Result:\n")
+                            
+                            # Try to parse content as JSON, if it's already JSON, keep it formatted
+                            try:
+                                # If content is already a dict/JSON, format it
+                                if isinstance(content, (dict, list)):
+                                    f.write(f"{json.dumps(content, indent=4, ensure_ascii=False)}\n")
+                                else:
+                                    # Try to parse as JSON string
+                                    parsed = json.loads(content)
+                                    f.write(f"{json.dumps(parsed, indent=4, ensure_ascii=False)}\n")
+                            except (json.JSONDecodeError, TypeError):
+                                # If not JSON, write as-is
+                                f.write(f"{content}\n")
+                            f.write(f"\n")
+                        
+                        else:
+                            # Unknown message type
+                            f.write(f"Message {msg_idx} [{msg_type}]:\n")
+                            f.write(f"{'-' * 80}\n")
+                            content = getattr(msg, 'content', str(msg))
+                            f.write(f"{content}\n\n")
                 
                 f.write(f"\n")
         
-        # Return expert log file if it exists, otherwise observations log
-        return expert_log_file if expert_analyses else (log_file if has_content else None)
+        # Return expert log file
+        return expert_log_file
     
-    return log_file if has_content else None
+    return None

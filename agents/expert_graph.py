@@ -254,7 +254,9 @@ async def run_expert_analysis(
         file_content: 文件的完整内容（可选）。
     
     Returns:
-        最终验证结果（JSON 字典），如果失败则返回 None。
+        包含 'result' 和 'messages' 的字典，如果失败则返回 None。
+        - result: 最终验证结果（JSON 字典）
+        - messages: 对话历史（消息列表）
     """
     try:
         # 初始化状态
@@ -271,7 +273,15 @@ async def run_expert_analysis(
         
         # 从消息中提取 JSON 结果
         messages = final_state.get("messages", [])
-        return _extract_json_from_messages(messages)
+        result = _extract_json_from_messages(messages)
+        
+        if result is None:
+            return None
+        
+        return {
+            "result": result,
+            "messages": messages
+        }
         
     except Exception as e:
         import traceback

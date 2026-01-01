@@ -1,5 +1,6 @@
 """PR（拉取请求）处理工具，用于 diff 加载和结果格式化。"""
 
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -104,7 +105,7 @@ def print_review_results(results: dict, workspace_root: Optional[Path] = None, c
             print(f"  ... (truncated, {len(final_report)} total characters)")
         print("  " + "=" * 76)
     
-    # Metadata
+    # Metadata (skip langchain_tools and other verbose fields)
     metadata = results.get("metadata", {})
     if metadata:
         print(f"\n📊 Metadata:")
@@ -116,9 +117,9 @@ def print_review_results(results: dict, workspace_root: Optional[Path] = None, c
                 print(f"  • {key}: [{len(value) if isinstance(value, list) else 0} tool calls] (saved to log)")
             elif key == "expert_analyses":
                 print(f"  • {key}: [{len(value) if isinstance(value, list) else 0} expert analyses] (saved to log)")
-            elif key in ["llm_provider", "config", "tools"]:
-                # Skip non-serializable objects
-                print(f"  • {key}: [object] (not serialized)")
+            elif key in ["llm_provider", "config", "tools", "langchain_tools"]:
+                # Skip non-serializable objects and langchain_tools
+                continue
             else:
                 print(f"  • {key}: {value}")
     
@@ -128,13 +129,131 @@ def print_review_results(results: dict, workspace_root: Optional[Path] = None, c
             log_file = save_observations_to_log(results, workspace_root, config)
             if log_file:
                 print(f"\n📝 Logs saved:")
-                print(f"   • Observations: {log_file}")
-                
-                # Check if expert analyses log exists (same directory)
-                expert_log_file = log_file.parent / "expert_analyses.log"
-                if expert_log_file.exists():
-                    print(f"   • Expert Analyses: {expert_log_file}")
+                print(f"   • Expert Analyses: {log_file}")
         except Exception as e:
             print(f"\n⚠️  Warning: Could not save logs: {e}")
     
     print("\n" + "=" * 80)
+
+
+def make_results_serializable(obj: dict) -> dict:
+    """移除字典中的不可序列化对象（如 LLMProvider、Config、tools）。
+    
+    同时优化结果结构：
+    - 移除 diff_context 字段
+    - 移除 confirmed_issues 字段
+    - 移除 metadata 字段
+    - 合并 work_list, expert_tasks, expert_results 为 risk_analyses 字段
+    - final_report 字段放在最后
+    - risk_analyses 中不包含 validated_item
+    
+    Args:
+        obj: 可能包含不可序列化对象的字典。
+    
+    Returns:
+        仅包含可序列化值的字典。
+    """
+    if not isinstance(obj, dict):
+        return obj
+    
+    result = {}
+    for key, value in obj.items():
+        # Remove diff_context field
+        if key == "diff_context":
+            continue
+        
+        if key == "metadata":
+            # Skip metadata - we'll access expert_analyses from it but not include it in output
+            continue
+        elif key in ["work_list", "expert_tasks", "expert_results", "confirmed_issues"]:
+            # Skip these keys - they will be merged into risk_analyses or removed
+            continue
+        elif key == "final_report":
+            # Skip final_report here - will be added at the end
+            continue
+        elif isinstance(value, dict):
+            result[key] = make_results_serializable(value)
+        elif isinstance(value, list):
+            result[key] = [
+                make_results_serializable(item) if isinstance(item, dict) else item
+                for item in value
+            ]
+        else:
+            # Try to serialize, skip if not serializable
+            try:
+                json.dumps(value)
+                result[key] = value
+            except (TypeError, ValueError):
+                result[key] = str(value)
+    
+    # Merge work_list, expert_tasks, expert_results into risk_analyses
+    expert_analyses = obj.get("metadata", {}).get("expert_analyses", [])
+    if expert_analyses:
+        # Create a map from (file_path, line_number, risk_type) to expert_analysis
+        analysis_map = {}
+        for analysis in expert_analyses:
+            file_path = analysis.get("file_path", "")
+            line_number = analysis.get("line_number", [0, 0])
+            risk_type = analysis.get("risk_type", "")
+            key = (file_path, tuple(line_number) if isinstance(line_number, list) else line_number, risk_type)
+            analysis_map[key] = analysis
+        
+        # Build risk_analyses list by matching work_list items with expert_analyses
+        risk_analyses = []
+        work_list = obj.get("work_list", [])
+        
+        for risk_item in work_list:
+            file_path = risk_item.get("file_path", "")
+            line_number = risk_item.get("line_number", [0, 0])
+            risk_type = risk_item.get("risk_type", "")
+            key = (file_path, tuple(line_number) if isinstance(line_number, list) else line_number, risk_type)
+            
+            analysis = analysis_map.get(key, {})
+            
+            # Build merged entry (without validated_item)
+            merged_entry = {
+                "risk_item": risk_item,  # 原始风险项
+                "result": analysis.get("result", {}),  # 分析结果
+                "messages": serialize_messages(analysis.get("messages", []))  # 对话历史
+            }
+            risk_analyses.append(merged_entry)
+        
+        result["risk_analyses"] = risk_analyses
+    
+    # Add final_report at the end
+    final_report = obj.get("final_report", "")
+    if final_report:
+        result["final_report"] = final_report
+    
+    return result
+
+
+def serialize_messages(messages: list) -> list:
+    """序列化 LangChain 消息列表。
+    
+    不包含 tool_calls 字段，因为工具调用信息已经在 ToolMessage 的 content 中。
+    
+    Args:
+        messages: LangChain 消息列表。
+    
+    Returns:
+        可序列化的消息字典列表。
+    """
+    serialized = []
+    for msg in messages:
+        msg_dict = {
+            "type": type(msg).__name__,
+            "content": getattr(msg, 'content', str(msg))
+        }
+        
+        # 不包含 tool_calls 字段，因为工具调用信息已经在 ToolMessage 的 content 中
+        
+        if hasattr(msg, 'name'):
+            msg_dict["name"] = msg.name
+        
+        if hasattr(msg, 'tool_call_id'):
+            msg_dict["tool_call_id"] = msg.tool_call_id
+        
+        serialized.append(msg_dict)
+    
+    return serialized

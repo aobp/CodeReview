@@ -30,64 +30,10 @@ from util import (
     validate_repo_path,
     ensure_head_version,
 )
+from util.pr_utils import make_results_serializable
 from util.git_utils import extract_files_from_diff, get_changed_files
 
 
-def _make_serializable(obj: dict) -> dict:
-    """移除字典中的不可序列化对象（如 LLMProvider、Config、tools）。
-    
-    Args:
-        obj: 可能包含不可序列化对象的字典。
-    
-    Returns:
-        仅包含可序列化值的字典。
-    """
-    if not isinstance(obj, dict):
-        return obj
-    
-    result = {}
-    for key, value in obj.items():
-        if key == "metadata":
-            # Clean metadata: keep only serializable values
-            if isinstance(value, dict):
-                clean_metadata = {}
-                for meta_key, meta_value in value.items():
-                    # Skip non-serializable objects
-                    if meta_key in ["llm_provider", "config", "tools"]:
-                        # Store a string representation instead
-                        if meta_key == "config":
-                            clean_metadata[meta_key] = {
-                                "llm_provider": str(type(meta_value.llm.provider).__name__) if hasattr(meta_value, "llm") else None,
-                                "model": meta_value.llm.model if hasattr(meta_value, "llm") else None,
-                            }
-                        else:
-                            clean_metadata[meta_key] = str(type(meta_value).__name__)
-                    else:
-                        # Try to serialize, skip if not serializable
-                        try:
-                            json.dumps(meta_value)
-                            clean_metadata[meta_key] = meta_value
-                        except (TypeError, ValueError):
-                            clean_metadata[meta_key] = str(meta_value)
-                result[key] = clean_metadata
-            else:
-                result[key] = value
-        elif isinstance(value, dict):
-            result[key] = _make_serializable(value)
-        elif isinstance(value, list):
-            result[key] = [
-                _make_serializable(item) if isinstance(item, dict) else item
-                for item in value
-            ]
-        else:
-            # Try to serialize, skip if not serializable
-            try:
-                json.dumps(value)
-                result[key] = value
-            except (TypeError, ValueError):
-                result[key] = str(value)
-    
-    return result
 
 
 async def run_syntax_checking(
@@ -362,7 +308,7 @@ async def main():
         output_file = Path(args.output)
         
         # Create a serializable copy of results
-        serializable_results = _make_serializable(results)
+        serializable_results = make_results_serializable(results)
         
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(serializable_results, f, indent=2, ensure_ascii=False)

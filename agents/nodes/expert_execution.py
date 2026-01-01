@@ -221,7 +221,7 @@ async def run_expert_group(
                 )
                 
                 # 运行专家分析子图
-                result_dict = await run_expert_analysis(
+                analysis_result = await run_expert_analysis(
                     graph=expert_graph,
                     risk_item=task,
                     system_prompt=system_prompt,
@@ -229,8 +229,15 @@ async def run_expert_group(
                     file_content=file_content
                 )
                 
-                if not result_dict:
+                if not analysis_result:
                     logger.warning(f"Failed to get result from expert analysis for {task.file_path}")
+                    return None
+                
+                result_dict = analysis_result.get("result")
+                messages = analysis_result.get("messages", [])
+                
+                if not result_dict:
+                    logger.warning(f"Failed to extract JSON result from expert analysis for {task.file_path}")
                     return None
                 
                 # 将结果转换为 RiskItem
@@ -244,13 +251,15 @@ async def run_expert_group(
                     suggestion=result_dict.get("suggestion", task.suggestion)
                 )
                 
-                # 记录专家分析日志
+                # 记录专家分析日志（包含对话历史）
                 expert_analysis = {
                     "risk_type": risk_type_str,
                     "file_path": task.file_path,
                     "line_number": task.line_number,
-                    "final_response": json.dumps(result_dict, ensure_ascii=False),
-                    "validated_item": validated_item.model_dump()
+                    "risk_item": task.model_dump(),  # 原始风险项
+                    "result": result_dict,  # 分析结果
+                    "validated_item": validated_item.model_dump(),  # 验证后的风险项
+                    "messages": messages  # 对话历史
                 }
                 
                 if "metadata" not in global_state:

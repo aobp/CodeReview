@@ -137,12 +137,6 @@ async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
     print("="*80)
     logger.info(f"Completed intent analysis for {len(file_analyses)} files")
 
-    # for i in file_analyses_dicts:
-    #     out = i['potential_risks']
-    #     print(f"\n  ✅ current risk!")
-    #     print(len(out),out[0]['risk_type'], out[0]['file_path'])
-    #     for j in out:
-    #         print(j['risk_type'],j['line_number'],j['confidence'],j['description'])
     
     return {
         "file_analyses": file_analyses_dicts

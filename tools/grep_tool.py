@@ -189,10 +189,10 @@ def _grep_internal(
                     # 构建结果块
                     relative_path = file_path.relative_to(repo_path)
                     result_block = f"""File: {relative_path}
-Match: Line {line_num}: {line.rstrip()}
-Context (Lines {start_line}-{end_line}):
-{"\n".join(context_lines_list)}
---------------------------------------------------"""
+                        Match: Line {line_num}: {line.rstrip()}
+                        Context (Lines {start_line}-{end_line}):
+                        {"\n".join(context_lines_list)}
+                        --------------------------------------------------"""
                     
                     results.append(result_block)
                     result_count += 1

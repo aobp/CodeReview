@@ -87,9 +87,6 @@ async def manager_node(state: ReviewState) -> Dict[str, Any]:
         expert_tasks = _group_tasks_by_risk_type(work_list)
 
         print(f"  ✅ worklist ")
-        for w in work_list:
-            print(w.file_path, w.risk_type, w.line_number, w.confidence, w.description)
-
 
         print(f"  ✅ Manager 完成!")
         print(f"     - 生成任务数: {len(work_list)}")
