@@ -8,11 +8,11 @@
             "program": "${workspaceFolder}/main.py",
             "args": [
                 "--repo",
-                "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile",
+                "/Users/wangyue/Code/CodeReviewData/ReviewDataset/grafana-greptile",
                 "--base",
-                "master",
+                "cache-optimization-baseline",
                 "--head",
-                "performance-enhancement-complete"
+                "authz-service-improve-caching-pr"
             ],
             "console": "integratedTerminal",
             "justMyCode": false,

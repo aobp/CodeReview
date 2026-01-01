@@ -71,7 +71,17 @@ class PythonRuffChecker(BaseSyntaxChecker):
             # Return empty list gracefully
             return []
         
-        # Build ruff command: ruff check --output-format=json <files>
+        # Build ruff command with ADC (Agent-Defined Config) strategy:
+        # --isolated: Ignore user's pyproject.toml configuration
+        # --select=E9,F,B,PLE: Only select critical error categories
+        #   - E9: Syntax Errors (must fix)
+        #   - F: Pyflakes (logic errors, e.g., undefined variables)
+        #   - B: Flake8-Bugbear (common potential bugs)
+        #   - PLE: Pylint Error (serious error subset)
+        # --ignore=E501,F401: Explicitly ignore style issues
+        #   - E501: Line too long (style issue, LLM doesn't care)
+        #   - F401: Unused imports (unless causing logic issues, usually noise)
+        # --output-format=json: JSON output format
         # Use relative paths from repo_path
         relative_paths = [str(f.relative_to(repo_path)) for f in existing_files]
         
@@ -79,6 +89,9 @@ class PythonRuffChecker(BaseSyntaxChecker):
             cmd = [
                 "ruff",
                 "check",
+                "--isolated",  # Ignore user's pyproject.toml
+                "--select=E9,F,B,PLE",  # Only critical errors
+                "--ignore=E501,F401",  # Ignore style issues
                 "--output-format=json",
                 *relative_paths
             ]

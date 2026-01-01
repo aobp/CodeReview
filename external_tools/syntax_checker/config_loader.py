@@ -134,9 +134,10 @@ def get_checker_config_key(checker_class_name: str) -> Tuple[str, str]:
     # Mapping from checker class names to config keys
     # Format: "ClassName" -> ("language", "checker_name")
     checker_map = {
-        "PythonPylintChecker": ("python", "pylint"),
         "PythonRuffChecker": ("python", "ruff"),
-        "TypeScriptESLintChecker": ("typescript", "eslint"),
+        "TypeScriptBiomeChecker": ("typescript", "biome"),
+        "GoVetChecker": ("go", "vet"),
+        "JavaPMDChecker": ("java", "pmd"),
     }
     
     return checker_map.get(checker_class_name, ("", ""))

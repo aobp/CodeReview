@@ -12,7 +12,7 @@ assets/          # 资产层：代码分析和索引（AST、RepoMap、CPG）
 tools/           # 工具层：MCP 兼容工具，封装资产查询
 core/            # 核心层：配置、LLM 客户端和共享状态
 agents/          # 智能体层：基于 LangGraph 的多智能体工作流
-external_tools/  # 外部工具：语法检查器（pylint、ruff、eslint）
+external_tools/  # 外部工具：语法检查器（ruff、biome、go vet、pmd）
 main.py          # 入口点
 log/             # 日志目录：智能体观察和工具调用日志
 ```
@@ -27,7 +27,7 @@ log/             # 日志目录：智能体观察和工具调用日志
   - **Manager**：生成任务列表并按风险类型分组
   - **Expert Execution**：并行执行专家组任务（并发控制）
   - **Reporter**：生成最终审查报告
-- **语法检查器**：支持 Python（pylint、ruff）和 TypeScript（eslint）的静态分析
+- **语法检查器**：支持 Python（ruff）、TypeScript/JavaScript（biome）、Go（go vet）和 Java（pmd）的静态分析
 
 ## 技术栈
 
@@ -57,30 +57,55 @@ pip install pyyaml
 
 4. 安装外部语法检查工具（可选，用于静态分析）：
    
-   **Python 检查器：**
-   - Ruff（推荐，快速）：
-     ```bash
-     pip install ruff
-     ```
-   - 或 Pylint：
-     ```bash
-     pip install pylint
-     ```
+   **Python 检查器（Ruff）：**
+   ```bash
+   # 使用 pip 安装
+   pip install ruff
    
-   **TypeScript/JavaScript 检查器：**
-   - 安装 ESLint（全局或本地）：
-     ```bash
-     # 全局安装
-     npm install -g eslint
-     
-     # 或本地安装（推荐）
-     npm install eslint
-     ```
-   - 对于 TypeScript 支持（可选，如果审查 TypeScript 代码）：
-     ```bash
-     npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin typescript
-     ```
-     注意：如果项目已有 `package.json`，这些依赖可能已包含在 `devDependencies` 中。
+   # 或使用 pipx（推荐，避免污染全局环境）
+   pipx install ruff
+   ```
+   
+   **TypeScript/JavaScript 检查器（Biome）：**
+   ```bash
+   # 使用 npm 全局安装
+   npm install -g @biomejs/biome
+   
+   # 或使用 Homebrew (macOS)
+   brew install biome
+   
+   # 或使用 Cargo (Rust 工具链)
+   cargo install --locked biome
+   ```
+   
+   **Go 检查器（go vet）：**
+   ```bash
+   # go vet 是 Go 标准库的一部分，随 Go 一起安装，无需额外安装
+   # 只需确保已安装 Go 1.x 或更高版本
+   go version  # 验证 Go 是否已安装
+   
+   # go vet 是官方工具，速度快（秒级返回），无需配置文件
+   ```
+   
+   **Java 检查器（PMD）：**
+   ```bash
+   # 使用 Homebrew (macOS)
+   brew install pmd
+   
+   # 或手动安装
+   # 下载最新版本
+   wget https://github.com/pmd/pmd/releases/latest/download/pmd-bin-7.x.x.zip
+   unzip pmd-bin-7.x.x.zip
+   sudo mv pmd-bin-7.x.x /opt/pmd
+   sudo ln -s /opt/pmd/bin/run.sh /usr/local/bin/pmd
+   ```
+   
+   **验证安装：**
+   ```bash
+   ruff --version && biome --version && go version && pmd --version
+   ```
+   
+   注意：如果工具未安装，系统会优雅降级（跳过检查并显示警告），不会导致系统崩溃。
 
 5. 配置 DeepSeek（如使用）：
    - 在 `~/.zshrc` 中设置 `DEEPSEEK_API_KEY` 环境变量：
@@ -158,7 +183,7 @@ asyncio.run(review_code())
 
 1. **初始化存储**：初始化 DAO 层（MVP 使用基于文件的存储）
 2. **构建资产**：如需要，构建并持久化仓库地图
-3. **语法检查**：对变更文件执行静态分析（pylint、ruff、eslint）
+3. **语法检查**：对变更文件执行静态分析（ruff、biome、go vet、pmd）
 4. **意图分析**：并行分析所有变更文件的意图（Map-Reduce 模式）
 5. **任务管理**：Manager 节点生成任务列表并按风险类型分组
 6. **专家执行**：并行执行专家组任务，使用并发控制
@@ -213,7 +238,7 @@ system:
 - ✅ **可扩展 DAO 层**：基于文件的存储（MVP），接口已就绪，可迁移到 SQL/NoSQL/GraphDB 后端
 - ✅ **资产管理**：RepoMap 构建器，自动 DAO 持久化（幂等构建）
 - ✅ **MCP 兼容工具**：标准化工具接口（FetchRepoMapTool、ReadFileTool）
-- ✅ **语法检查器**：支持 Python（pylint、ruff）和 TypeScript（eslint）
+- ✅ **语法检查器**：支持 Python（ruff）、TypeScript/JavaScript（biome）、Go（go vet）和 Java（pmd），采用 Agent-Defined Config (ADC) 策略，强制使用内置配置
 - ✅ **全面日志记录**：自动记录智能体观察和工具调用到结构化日志文件
 - ✅ **多 LLM 提供商**：支持 OpenAI、DeepSeek 和 mock 提供商（用于测试）
 - ✅ **并发控制**：使用 Semaphore 限制并发 LLM 请求数量
@@ -280,9 +305,10 @@ CodeReview/
 │       ├── factory.py      # 检查器工厂
 │       ├── config_loader.py # 配置加载器
 │       └── implementations/
-│           ├── python_pylint.py
 │           ├── python_ruff.py
-│           └── typescript_eslint.py
+│           ├── typescript_biome.py
+│           ├── go_vet.py
+│           └── java_pmd.py
 ├── util/                   # 工具函数
 │   ├── arg_utils.py        # 参数验证
 │   ├── git_utils.py        # Git 操作
@@ -307,7 +333,7 @@ CodeReview/
 - [ ] 高级查询功能
 - [ ] 审查结果的 Web UI
 - [ ] CI/CD 集成
-- [ ] 更多语言支持（Go、Java、Rust 等）
+- [ ] 更多语言支持（Java、Rust 等）
 
 ## 开发
 

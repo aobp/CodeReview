@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<ruleset name="AgentCriticalRules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+         http://pmd.sourceforge.net/ruleset_2_0_0.xsd">
+    <description>
+        Agent-Defined Config (ADC) ruleset for PMD.
+        Only includes critical error-prone and best practice rules.
+        Excludes all naming conventions and code style rules.
+    </description>
+    
+    <!-- 1. 严重逻辑错误 (Error Prone) -->
+    <rule ref="category/java/errorprone.xml/NullAssignment">
+        <description>Detects assignments of null values to variables that are never used afterwards</description>
+    </rule>
+    
+    <rule ref="category/java/errorprone.xml/UnconditionalIfStatement">
+        <description>Detects if statements that are always true or always false</description>
+    </rule>
+    
+    <rule ref="category/java/errorprone.xml/EmptyCatchBlock">
+        <description>Detects empty catch blocks that swallow exceptions</description>
+    </rule>
+    
+    <rule ref="category/java/errorprone.xml/ReturnFromFinallyBlock">
+        <description>Detects return statements in finally blocks that can mask exceptions</description>
+    </rule>
+    
+    <rule ref="category/java/errorprone.xml/CloseResource">
+        <description>Detects resources (files, SQL connections, etc.) that are not properly closed</description>
+    </rule>
+    
+    <!-- 2. 明显的无用代码 (可能暗示逻辑错误) - Best Practices -->
+    <rule ref="category/java/bestpractices.xml/UnusedPrivateField">
+        <description>Detects unused private fields that may indicate dead code or logic errors</description>
+    </rule>
+    
+    <rule ref="category/java/bestpractices.xml/UnusedLocalVariable">
+        <description>Detects unused local variables that may indicate logic errors</description>
+    </rule>
+    
+    <!-- 排除所有 Naming (命名规范) 和 CodeStyle (格式) 规则 -->
+    <!-- 这些规则已经在规则集定义中通过只选择 errorprone 和 bestpractices 类别自动排除 -->
+</ruleset>
+

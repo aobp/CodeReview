@@ -1,6 +1,6 @@
 {
     "sentry": {
-      "Enhanced Pagination Performance for High-Volume Audit Logs_Importing non-existent OptimizedCursorPaginator": {
+      "1 Enhanced Pagination Performance for High-Volume Audit Logs_Importing non-existent OptimizedCursorPaginator": {
         "prlink": "https://github.com/ai-code-review-evaluation/sentry-greptile/pull/1",
         "selected_tool": "greptile",
         "rightorfalse": true,
@@ -47,7 +47,7 @@
         ],
         "comment_count": 4
       },
-      "Optimize spans buffer insertion with eviction during insert_Negative offset cursor manipulation bypasses pagination boundaries": {
+      "2 Optimize spans buffer insertion with eviction during insert_Negative offset cursor manipulation bypasses pagination boundaries": {
         "prlink": "https://github.com/ai-code-review-evaluation/sentry-cursor/pull/2",
         "selected_tool": "cursor",
         "rightorfalse": true,
@@ -87,7 +87,7 @@
         ],
         "comment_count": 3
       },
-      "Support upsampled error count with performance optimizations_sample_rate = 0.0 is falsy and skipped": {
+      "3 Support upsampled error count with performance optimizations_sample_rate = 0.0 is falsy and skipped": {
         "prlink": "https://github.com/ai-code-review-evaluation/sentry-greptile/pull/3",
         "selected_tool": "greptile",
         "rightorfalse": true,
@@ -159,7 +159,7 @@
         ],
         "comment_count": 7
       },
-      "GitHub OAuth Security Enhancement_Null reference if github_authenticated_user state is missing": {
+      "4 GitHub OAuth Security Enhancement_Null reference if github_authenticated_user state is missing": {
         "prlink": "https://github.com/ai-code-review-evaluation/sentry-cursor/pull/4",
         "selected_tool": "cursor",
         "rightorfalse": true,
@@ -190,7 +190,7 @@
         ],
         "comment_count": 2
       },
-      "Replays Self-Serve Bulk Delete System_Breaking changes in error response format": {
+      "5 Replays Self-Serve Bulk Delete System_Breaking changes in error response format": {
         "prlink": "https://github.com/ai-code-review-evaluation/sentry-greptile/pull/5",
         "selected_tool": "greptile",
         "rightorfalse": true,
@@ -282,7 +282,7 @@
         ],
         "comment_count": 6
       },
-      "Span Buffer Multiprocess Enhancement with Health Monitoring_Inconsistent metric tagging with 'shard' and 'shards'": {
+      "6 Span Buffer Multiprocess Enhancement with Health Monitoring_Inconsistent metric tagging with 'shard' and 'shards'": {
         "prlink": "https://github.com/ai-code-review-evaluation/sentry-greptile/pull/6",
         "selected_tool": "greptile",
         "rightorfalse": true,
@@ -329,7 +329,7 @@
         ],
         "comment_count": 4
       },
-      "Implement cross-system issue synchronization_Shared mutable default in dataclass timestamp": {
+      "7 Implement cross-system issue synchronization_Shared mutable default in dataclass timestamp": {
         "prlink": "https://github.com/ai-code-review-evaluation/sentry-cursor/pull/7",
         "selected_tool": "cursor",
         "rightorfalse": true,
@@ -368,7 +368,7 @@
         ],
         "comment_count": 3
       },
-      "Reorganize incident creation / issue occurrence logic_Using stale config variable instead of updated one": {
+      "8 Reorganize incident creation / issue occurrence logic_Using stale config variable instead of updated one": {
         "prlink": "https://github.com/ai-code-review-evaluation/sentry-greptile/pull/8",
         "selected_tool": "greptile",
         "rightorfalse": true,
@@ -423,7 +423,7 @@
         ],
         "comment_count": 5
       },
-      "Add ability to use queues to manage parallelism_Invalid queue.ShutDown exception handling": {
+      "9 Add ability to use queues to manage parallelism_Invalid queue.ShutDown exception handling": {
         "prlink": "https://github.com/ai-code-review-evaluation/sentry-greptile/pull/9",
         "selected_tool": "greptile",
         "rightorfalse": true,

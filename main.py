@@ -222,6 +222,9 @@ async def main():
     print(f"📝 Configuration loaded: LLM Provider = {config.llm.provider}")
     print(f"📁 Workspace root: {config.system.workspace_root}")
     
+    # Load diff from Git (includes argument validation)
+    pr_diff, branch, commit = load_diff_from_args(args, repo_path)
+    
     # Ensure repository is on HEAD version (not base version) before review
     try:
         print(f"\n🔀 Ensuring repository is on HEAD version ({args.head})...")
@@ -230,10 +233,7 @@ async def main():
     except Exception as e:
         print(f"⚠️  Warning: Could not ensure HEAD version: {e}")
         print(f"   Continuing with current version...")
-    
-    # Load diff from Git (includes argument validation)
-    pr_diff, branch, commit = load_diff_from_args(args, repo_path)
-    
+
     # Step 1: Initialize Storage (DAO layer)
     print("\n💾 Initializing storage backend...")
     storage = get_storage()
