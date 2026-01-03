@@ -18,6 +18,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from agents.prompts import render_prompt_template
 from core.config import Config
 from core.state import ExpertState, RiskItem
+from util.console_utils import vprint
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,9 @@ class ExpertGraphRuntime:
 
         current_round = 1 + sum(1 for m in messages if isinstance(m, AIMessage))
         line_start, line_end = risk_context.line_number
-        print(f"  🔍 [专家分析] 第 {current_round} 轮 | [{risk_type_str}] {risk_context.file_path}:{line_start}-{line_end}")
+        # Keep terminal clean by default: per-round expert logs are noisy in benchmarks.
+        # Enable by setting CR_VERBOSE=1.
+        vprint(f"  🔍 [专家分析] 第 {current_round} 轮 | [{risk_type_str}] {risk_context.file_path}:{line_start}-{line_end}")
 
         system_msg = self.build_system_message(risk_context, risk_type_str, file_content, diff_context)
 
@@ -335,7 +338,7 @@ class ExpertGraphRuntime:
 
             system_content += f"""
             ## 文件内容（已截取窗口）
-            下面仅提供与风险行号相关的局部窗口（{lo}-{hi}）。如需更多上下文，请使用 read_file 工具按需读取（建议限制 max_lines）。
+            下面仅提供与风险行号相关的局部窗口（{lo}-{hi}）。如需更多上下文，请优先使用 read_file_snippet 按行号范围读取（建议设置 max_lines 控制输出预算）。
 
             {snippet}"""
 

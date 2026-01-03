@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AliasChoices
 
 
 class LLMConfig(BaseModel):
@@ -32,6 +32,7 @@ class SystemConfig(BaseModel):
     max_expert_tool_calls: int = Field(
         default=6,
         ge=0,
+        validation_alias=AliasChoices("max_expert_tool_calls", "max_expert_tool_call"),
         description="Maximum tool calls per expert analysis (0 = no tools)",
     )
 
@@ -179,6 +180,13 @@ class Config(BaseModel):
             try:
                 system_config.max_expert_tool_calls = int(
                     os.getenv("MAX_EXPERT_TOOL_CALLS", str(system_config.max_expert_tool_calls))
+                )
+            except ValueError:
+                pass
+        elif os.getenv("MAX_EXPERT_TOOL_CALL"):
+            try:
+                system_config.max_expert_tool_calls = int(
+                    os.getenv("MAX_EXPERT_TOOL_CALL", str(system_config.max_expert_tool_calls))
                 )
             except ValueError:
                 pass

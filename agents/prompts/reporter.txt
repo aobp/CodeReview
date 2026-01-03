@@ -13,11 +13,11 @@ Generate a professional, comprehensive code review report that:
 3. Includes actionable recommendations
 4. Highlights critical issues
 5. Provides a summary of overall code quality
+6. Does NOT introduce new issues beyond the provided Confirmed Issues
 
 ## Output Format
-Generate a markdown-formatted report with the following structure:
+Generate a markdown-formatted report with the following structure (output markdown directly; do NOT wrap it in triple backticks):
 
-```markdown
 # Code Review Report
 
 ## Executive Summary
@@ -42,7 +42,6 @@ Generate a markdown-formatted report with the following structure:
 
 ## Recommendations
 [Overall recommendations for the codebase]
-```
 
 ## Guidelines
 - Be professional and constructive
@@ -51,3 +50,4 @@ Generate a markdown-formatted report with the following structure:
 - Group related issues together
 - Include file paths and line numbers for easy navigation
 - Be concise but thorough
+- Only use the provided Confirmed Issues; do not invent additional findings

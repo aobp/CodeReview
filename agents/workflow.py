@@ -22,6 +22,8 @@ from agents.nodes.intent_analysis import intent_analysis_node
 from agents.nodes.manager import manager_node
 from agents.nodes.expert_execution import expert_execution_node
 from agents.nodes.reporter import reporter_node
+from util.expert_stats import format_tool_call_summary
+from util.runtime_utils import ensure_run_started, elapsed_seconds, elapsed_tag, format_duration
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +108,8 @@ def route_to_experts(state: ReviewState) -> str:
     如果 work_list 为空，跳转到 reporter；否则执行 expert_execution。
     """
     print("\n" + "="*80)
-    print("🔀 [路由] route_to_experts - 决策下一步")
+    meta = state.get("metadata") or {}
+    print(f"🔀 [路由] route_to_experts - 决策下一步 ({elapsed_tag(meta)})")
     print("="*80)
     
     work_list = state.get("work_list", [])
@@ -222,15 +225,16 @@ async def run_multi_agent_workflow(
         "metadata": {
             "workflow_version": "multi_agent_parallel",
             "config_provider": config.llm.provider,
-            "confidence_threshold": 0.5
+            "confidence_threshold": 0.6
         }
     }
+    ensure_run_started(initial_state["metadata"])
     
     # Run the workflow
     print("\n" + "="*80)
     print("🚀 多智能体工作流启动")
     print("="*80)
-    print(f"📝 输入:")
+    print(f"📝 输入 ({elapsed_tag(initial_state['metadata'])}):")
     print(f"   - Diff 上下文: {len(diff_context)} 字符")
     print(f"   - 变更文件数: {len(changed_files)}")
     print(f"   - Lint 错误数: {len(lint_errors) if lint_errors else 0}")
@@ -253,13 +257,21 @@ async def run_multi_agent_workflow(
         
         final_state = await app.ainvoke(initial_state, **invoke_kwargs)
         
+        meta = final_state.get("metadata") or {}
+        ensure_run_started(meta)
+        total_s = elapsed_seconds(meta)
         print("\n" + "="*80)
-        print("✅ 工作流执行完成")
+        print(f"✅ 工作流执行完成 ({elapsed_tag(meta)})")
         print("="*80)
         print(f"📊 最终结果:")
         print(f"   - 确认问题数: {len(final_state.get('confirmed_issues', []))}")
         print(f"   - 报告长度: {len(final_state.get('final_report', ''))} 字符")
+        print(f"⏱️ 总运行时间: {format_duration(total_s)}")
         print("="*80)
+
+        stats = (final_state.get("metadata") or {}).get("expert_tool_call_stats")
+        if isinstance(stats, dict):
+            print(format_tool_call_summary(stats))
         
         return final_state
     except Exception as e:

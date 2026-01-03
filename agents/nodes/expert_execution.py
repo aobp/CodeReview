@@ -15,6 +15,8 @@ from core.config import Config
 from agents.expert_graph import build_expert_graph, create_langchain_tools, run_expert_analysis
 from util.file_utils import read_file_content
 from util.diff_utils import extract_file_diff
+from util.expert_stats import build_tool_call_stats, count_ai_rounds, count_tool_messages
+from util.runtime_utils import elapsed_tag
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,8 @@ async def expert_execution_node(state: ReviewState) -> Dict[str, Any]:
         包含 'expert_results' 键的字典。
     """
     print("\n" + "="*80)
-    print("🔬 [节点3] Expert Execution - 并行执行专家组")
+    meta = state.get("metadata") or {}
+    print(f"🔬 [节点3] Expert Execution - 并行执行专家组 ({elapsed_tag(meta)})")
     print("="*80)
     
     # Get dependencies from metadata
@@ -95,6 +98,7 @@ async def expert_execution_node(state: ReviewState) -> Dict[str, Any]:
     results = await asyncio.gather(*[task for _, task in tasks], return_exceptions=True)
     
     # Collect results
+    tool_stats_records: List[tuple[int, int]] = []
     for (risk_type_str, _), result in zip(tasks, results):
         if isinstance(result, Exception):
             import traceback
@@ -109,7 +113,7 @@ async def expert_execution_node(state: ReviewState) -> Dict[str, Any]:
             expert_results[risk_type_str] = result
     
     total_results = sum(len(r) for r in expert_results.values())
-    print(f"\n  ✅ Expert Execution 完成!")
+    print(f"\n  ✅ Expert Execution 完成! ({elapsed_tag(meta)})")
     print(f"     - 完成专家组: {len(expert_results)}")
     print(f"     - 总结果数: {total_results}")
     print("="*80)
@@ -122,7 +126,25 @@ async def expert_execution_node(state: ReviewState) -> Dict[str, Any]:
         for risk_type, items in expert_results.items()
     }
     
-    return {"expert_results": expert_results_dicts}
+    # Compute tool-call histogram from per-task stored metadata (populated in run_expert_group).
+    expert_analyses = (state.get("metadata") or {}).get("expert_analyses") if isinstance(state.get("metadata"), dict) else None
+    if isinstance(expert_analyses, list):
+        for a in expert_analyses:
+            if not isinstance(a, dict):
+                continue
+            tool_calls_used = a.get("tool_calls_used")
+            ai_rounds_used = a.get("ai_rounds_used")
+            if tool_calls_used is None or ai_rounds_used is None:
+                continue
+            try:
+                tool_stats_records.append((int(tool_calls_used), int(ai_rounds_used)))
+            except Exception:
+                continue
+
+    stats_payload = build_tool_call_stats(tool_stats_records) if tool_stats_records else build_tool_call_stats([])
+    metadata = dict(state.get("metadata") or {})
+    metadata["expert_tool_call_stats"] = stats_payload
+    return {"expert_results": expert_results_dicts, "metadata": metadata}
 
 
 async def run_expert_group(
@@ -218,7 +240,9 @@ async def run_expert_group(
                     "risk_item": task.model_dump(),  # 原始风险项
                     "result": validated_item.model_dump(),  # 分析结果（RiskItem 对象）
                     "validated_item": validated_item.model_dump(),  # 验证后的风险项
-                    "messages": messages  # 对话历史
+                    "messages": messages,  # 对话历史
+                    "tool_calls_used": count_tool_messages(messages),
+                    "ai_rounds_used": count_ai_rounds(messages),
                 }
                 
                 if "metadata" not in global_state:
@@ -249,4 +273,3 @@ async def run_expert_group(
                 f"{len(validated_results)} validated results")
     
     return validated_results
-

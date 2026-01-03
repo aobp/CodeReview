@@ -8,6 +8,7 @@ import asyncio
 import logging
 import json
 import re
+import os
 from typing import Dict, Any
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -16,6 +17,7 @@ from core.state import ReviewState, FileAnalysis, RiskItem, RiskType
 from agents.prompts import render_prompt_template
 from util.diff_utils import generate_context_text_for_file, extract_file_diff
 from util.file_utils import read_file_content
+from util.runtime_utils import elapsed_tag
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,8 @@ async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
         包含 'file_analyses' 键的字典。
     """
     print("\n" + "="*80)
-    print("📋 [节点1] Intent Analysis - 并行分析文件意图")
+    meta = state.get("metadata") or {}
+    print(f"📋 [节点1] Intent Analysis - 并行分析文件意图 ({elapsed_tag(meta)})")
     print("="*80)
     
     # Get LLM from metadata (injected by workflow)
@@ -48,13 +51,16 @@ async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
     
     # ===== 临时调试：文件过滤 =====
     # TODO: 调试完成后删除此代码块
-    TARGET_FILE = "src/sentry/incidents/grouptype.py"  # 修改为要调试的文件路径
-    changed_files = [f for f in changed_files if f == TARGET_FILE or f.endswith(TARGET_FILE)]
-    if changed_files:
-        print(f"  🔍 [调试模式] 过滤后只分析文件: {changed_files}")
-    else:
-        print(f"  ⚠️  [调试模式] 目标文件 '{TARGET_FILE}' 不在变更列表中")
-        return {"file_analyses": []}
+    # 说明：默认不启用过滤（避免影响 benchmark）。需要调试时设置环境变量：
+    #   export INTENT_ANALYSIS_TARGET_FILE="path/to/file.py"
+    target_file = os.environ.get("INTENT_ANALYSIS_TARGET_FILE", "").strip()
+    if target_file:
+        changed_files = [f for f in changed_files if f == target_file or f.endswith(target_file)]
+        if changed_files:
+            print(f"  🔍 [调试模式] 过滤后只分析文件: {changed_files}")
+        else:
+            print(f"  ⚠️  [调试模式] 目标文件 '{target_file}' 不在变更列表中")
+            return {"file_analyses": []}
     # ===== 临时调试代码结束 =====
     
     print(f"  📁 待分析文件数: {len(changed_files)}")
@@ -130,7 +136,7 @@ async def intent_analysis_node(state: ReviewState) -> Dict[str, Any]:
     file_analyses_dicts = [fa.model_dump() for fa in file_analyses]
     
     total_risks = sum(len(fa.potential_risks) for fa in file_analyses)
-    print(f"\n  ✅ Intent Analysis 完成!")
+    print(f"\n  ✅ Intent Analysis 完成! ({elapsed_tag(meta)})")
     print(f"     - 分析文件数: {len(file_analyses)}")
     print(f"     - 发现潜在风险: {total_risks} 个")
     print("="*80)

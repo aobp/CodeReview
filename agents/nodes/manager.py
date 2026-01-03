@@ -12,6 +12,7 @@ from langchain_core.language_models import BaseChatModel
 from core.state import ReviewState, RiskItem, RiskType, WorkListResponse
 from agents.prompts import render_prompt_template
 from collections import defaultdict
+from util.runtime_utils import elapsed_tag
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,8 @@ async def manager_node(state: ReviewState) -> Dict[str, Any]:
         包含 'work_list' 和 'expert_tasks' 键的字典。
     """
     print("\n" + "="*80)
-    print("👔 [节点2] Manager - 生成任务列表并分组")
+    meta = state.get("metadata") or {}
+    print(f"👔 [节点2] Manager - 生成任务列表并分组 ({elapsed_tag(meta)})")
     print("="*80)
     
     # 获取 LLM（从 metadata）
@@ -83,7 +85,7 @@ async def manager_node(state: ReviewState) -> Dict[str, Any]:
 
         print(f"  ✅ worklist ")
 
-        print(f"  ✅ Manager 完成!")
+        print(f"  ✅ Manager 完成! ({elapsed_tag(meta)})")
         print(f"     - 生成任务数: {len(work_list)}")
         print(f"     - 专家组数量: {len(expert_tasks)}")
         print(f"     - 任务分组:")

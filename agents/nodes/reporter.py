@@ -9,6 +9,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.language_models import BaseChatModel
 from core.state import ReviewState, RiskItem
 from agents.prompts import render_prompt_template
+from util.runtime_utils import elapsed_tag
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,8 @@ async def reporter_node(state: ReviewState) -> Dict[str, Any]:
         包含 'confirmed_issues' 和 'final_report' 键的字典。
     """
     print("\n" + "="*80)
-    print("📊 [节点4] Reporter - 生成最终报告")
+    meta = state.get("metadata") or {}
+    print(f"📊 [节点4] Reporter - 生成最终报告 ({elapsed_tag(meta)})")
     print("="*80)
     
     # Get LLM from metadata
@@ -79,7 +81,7 @@ async def reporter_node(state: ReviewState) -> Dict[str, Any]:
         response = await llm.ainvoke(messages, temperature=0.3)
         final_report = response.content if hasattr(response, 'content') else str(response)
         
-        print(f"  ✅ Reporter 完成!")
+        print(f"  ✅ Reporter 完成! ({elapsed_tag(meta)})")
         print(f"     - 报告长度: {len(final_report)} 字符")
         print(f"     - 确认问题: {len(confirmed_issues)} 个")
         print("="*80)
