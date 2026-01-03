@@ -91,14 +91,12 @@ def create_tools_with_context(
     @tool
     async def read_file(
         file_path: str,
-        max_lines: Optional[int] = None,
         encoding: str = "utf-8"
     ) -> Dict[str, Any]:
-        """读取文件内容。
+        """读取文件内容（总是返回完整文件）。
         
         Args:
             file_path: 文件路径（相对于工作区根目录或绝对路径）。
-            max_lines: 可选的最大行数限制。
             encoding: 文件编码，默认为 'utf-8'。
         
         Returns:
@@ -120,14 +118,8 @@ def create_tools_with_context(
                 }
             
             with open(file_path_obj, "r", encoding=encoding) as f:
-                lines = f.readlines()
-                line_count = len(lines)
-                
-                if max_lines and line_count > max_lines:
-                    content = "".join(lines[:max_lines])
-                    content += f"\n... (truncated, {line_count - max_lines} more lines)"
-                else:
-                    content = "".join(lines)
+                content = f.read()
+                line_count = len(content.splitlines())
             
             return {
                 "content": content,
@@ -152,8 +144,8 @@ def create_tools_with_context(
         case_sensitive: bool = True,
         include_patterns: Optional[List[str]] = None,
         exclude_patterns: Optional[List[str]] = None,
-        context_lines: int = 10,
-        max_results: int = 50,
+        context_lines: int = 30,
+        max_results: int = 10
     ) -> str:
         """在代码库中搜索字符串或正则表达式。
         
@@ -163,7 +155,7 @@ def create_tools_with_context(
             case_sensitive: 搜索是否区分大小写。默认为 True。
             include_patterns: 要包含的文件名模式列表。默认为 ["*"]。
             exclude_patterns: 要排除的文件模式列表。默认为空列表。
-            context_lines: 每个匹配项前后的上下文行数。默认为 10。
+            context_lines: 每个匹配项前后的上下文行数。默认为 50。
             max_results: 返回的最大匹配块数。默认为 50。
         
         Returns:

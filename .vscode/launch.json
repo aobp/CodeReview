@@ -11,9 +11,9 @@
                 "--repo",
                 "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile",
                 "--base",
-                "performance-optimization-baseline",
+                "master",
                 "--head",
-                "performance-enhancement-complete"
+                "error-upsampling-race-condition"
             ],
             "console": "integratedTerminal",
             "justMyCode": false,
