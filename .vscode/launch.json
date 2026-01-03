@@ -11,9 +11,9 @@
                 "--repo",
                 "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile",
                 "--base",
-                "master",
+                "workflow-engine-stateful-detector-before",
                 "--head",
-                "error-upsampling-race-condition"
+                "workflow-engine-stateful-detector-after"
             ],
             "console": "integratedTerminal",
             "justMyCode": false,

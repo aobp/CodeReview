@@ -138,14 +138,100 @@ def create_tools_with_context(
                 "encoding": encoding,
                 "error": f"Error reading file: {str(e)}"
             }
+
+    @tool
+    async def read_file_snippet(
+        file_path: str,
+        start_line: int,
+        end_line: int,
+        context_lines: int = 20,
+        max_lines: int = 240,
+        encoding: str = "utf-8",
+    ) -> Dict[str, Any]:
+        """按行号范围读取文件片段（带行号），用于把 CPG location 转成可读代码证据。
+
+        Args:
+            file_path: 文件路径（相对于工作区根目录或绝对路径）。
+            start_line: 起始行号（1-indexed）。
+            end_line: 结束行号（1-indexed，>= start_line）。
+            context_lines: 在 start/end 前后额外扩展的上下文行数。
+            max_lines: 最多返回多少行（包含上下文），用于控制输出预算。
+            encoding: 文件编码。
+
+        Returns:
+            - snippet: 带行号的文本片段
+            - file_path: 解析后的绝对路径
+            - range: [lo, hi]
+            - line_count: 文件总行数
+            - error: 错误信息（无错误为 None）
+        """
+        try:
+            file_path_obj = Path(file_path)
+            if not file_path_obj.is_absolute():
+                workspace = Path(workspace_root_str) if workspace_root_str else Path.cwd()
+                file_path_obj = workspace / file_path_obj
+
+            if not file_path_obj.exists():
+                return {
+                    "snippet": "",
+                    "file_path": str(file_path_obj),
+                    "range": [0, 0],
+                    "line_count": 0,
+                    "encoding": encoding,
+                    "error": f"File not found: {file_path_obj}",
+                }
+
+            start_line = int(start_line)
+            end_line = int(end_line)
+            if start_line < 1:
+                start_line = 1
+            if end_line < start_line:
+                end_line = start_line
+
+            context_lines = max(0, int(context_lines))
+            max_lines = max(20, int(max_lines))
+
+            with open(file_path_obj, "r", encoding=encoding) as f:
+                lines = f.read().splitlines()
+
+            total = len(lines)
+            lo = max(1, start_line - context_lines)
+            hi = min(total, end_line + context_lines)
+
+            if hi - lo + 1 > max_lines:
+                # Keep the requested [start_line, end_line] centered as much as possible.
+                center = (start_line + end_line) // 2
+                half = max_lines // 2
+                lo = max(1, center - half)
+                hi = min(total, lo + max_lines - 1)
+                lo = max(1, hi - max_lines + 1)
+
+            snippet = "\n".join(f"{i}: {lines[i-1]}" for i in range(lo, hi + 1))
+            return {
+                "snippet": snippet,
+                "file_path": str(file_path_obj),
+                "range": [lo, hi],
+                "line_count": total,
+                "encoding": encoding,
+                "error": None,
+            }
+        except Exception as e:
+            return {
+                "snippet": "",
+                "file_path": str(file_path),
+                "range": [0, 0],
+                "line_count": 0,
+                "encoding": encoding,
+                "error": f"Error reading file snippet: {str(e)}",
+            }
     
     @tool
     async def run_grep(
         pattern: str,
         is_regex: bool = False,
         case_sensitive: bool = True,
-        include_patterns: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None,
+        include_patterns: Optional[List[str] | str] = None,
+        exclude_patterns: Optional[List[str] | str] = None,
         context_lines: int = 30,
         max_results: int = 10
     ) -> str:
@@ -165,18 +251,50 @@ def create_tools_with_context(
         """
         from tools.grep_tool import _grep_internal
         import os
+        import json
         
         repo_root = workspace_root_str if workspace_root_str else (os.getenv("REPO_ROOT") or os.getcwd())
         
-        if include_patterns is None:
-            include_patterns = ["*"]
-        if exclude_patterns is None:
-            exclude_patterns = []
+        def _normalize_patterns(v: Optional[List[str] | str], *, default: List[str]) -> List[str]:
+            if v is None:
+                return default
+            if isinstance(v, list):
+                return [str(x) for x in v if str(x)]
+            if isinstance(v, str):
+                s = v.strip()
+                if not s:
+                    return default
+                # Common model mistake: pass JSON array as a string.
+                if s.startswith("["):
+                    try:
+                        parsed = json.loads(s)
+                        if isinstance(parsed, list):
+                            out = [str(x) for x in parsed if str(x)]
+                            return out or default
+                    except Exception:
+                        pass
+                # Fallback: comma-separated
+                if "," in s:
+                    out = [p.strip() for p in s.split(",") if p.strip()]
+                    return out or default
+                return [s]
+            return default
+
+        include_patterns = _normalize_patterns(include_patterns, default=["*"])
+        exclude_patterns = _normalize_patterns(exclude_patterns, default=[])
+
+        # Common model mistake: write an escaped regex like "\\.get\\(" but forget is_regex=true.
+        # If we see typical escaped regex metacharacters, treat it as regex.
+        effective_is_regex = bool(is_regex)
+        if (not effective_is_regex) and isinstance(pattern, str) and ("\\" in pattern):
+            escaped_meta = ("\\.", "\\(", "\\)", "\\[", "\\]", "\\+", "\\*", "\\?", "\\|", "\\^", "\\$")
+            if any(tok in pattern for tok in escaped_meta):
+                effective_is_regex = True
         
         return _grep_internal(
             repo_root=repo_root,
             pattern=pattern,
-            is_regex=is_regex,
+            is_regex=effective_is_regex,
             case_sensitive=case_sensitive,
             include_patterns=tuple(include_patterns),
             exclude_patterns=tuple(exclude_patterns),
@@ -185,6 +303,38 @@ def create_tools_with_context(
         )
 
     # ---- Lite-CPG tools (vendored into CodeReview/lite_cpg) ----
+
+    def _normalize_str_list(v: Optional[List[str] | str], *, default: Optional[List[str]] = None) -> Optional[List[str]]:
+        """Normalize common model mistakes for List[str] parameters.
+
+        - Accept JSON array passed as a string: '["a","b"]'
+        - Accept comma-separated string: 'a,b'
+        - Accept single string: 'a'
+        """
+        if default is None:
+            default = None
+        if v is None:
+            return default
+        if isinstance(v, list):
+            out = [str(x) for x in v if str(x)]
+            return out or default
+        if isinstance(v, str):
+            s = v.strip()
+            if not s:
+                return default
+            if s.startswith("["):
+                try:
+                    parsed = json.loads(s)
+                    if isinstance(parsed, list):
+                        out = [str(x) for x in parsed if str(x)]
+                        return out or default
+                except Exception:
+                    pass
+            if "," in s:
+                out = [p.strip() for p in s.split(",") if p.strip()]
+                return out or default
+            return [s]
+        return default
 
     def _lite_cpg_db_path() -> Optional[str]:
         return os.environ.get("LITE_CPG_DB_PATH")
@@ -344,7 +494,7 @@ def create_tools_with_context(
 
     @tool
     async def cpg_ast_index(
-        file_paths: Optional[List[str]] = None,
+        file_paths: Optional[List[str] | str] = None,
         rev: Optional[str] = None,
         lang: Optional[str] = None,
         include_defs: bool = True,
@@ -356,7 +506,7 @@ def create_tools_with_context(
         """Lite-CPG：文件级 defs/calls/imports 索引视图。
 
         Args:
-            file_paths: 需要索引视图的文件路径列表（绝对路径）。不传表示按 rev 返回全库文件的视图（可能很大）。
+            file_paths: 需要索引视图的文件路径列表（绝对路径）。也可传 JSON 数组字符串（模型常见误传）。不传表示按 rev 返回全库文件的视图（可能很大）。
             rev: 版本标识，"head" 或 "base"。默认使用 "head"。
             lang: 语言过滤（python/typescript/go/java/ruby），不传表示不过滤。
             include_defs: 是否包含定义（defs）。
@@ -376,6 +526,9 @@ def create_tools_with_context(
             out.update(_lite_cpg_missing())
             return out
         from lite_cpg.tools.cpg_tools import ast_index
+
+        # Common model mistake: pass JSON array as a string.
+        file_paths = _normalize_str_list(file_paths, default=None)
 
         # Budget control: repo-wide ast_index can be enormous. If file_paths is omitted,
         # we intentionally return a small file list only (location-first guidance),
@@ -869,6 +1022,7 @@ def create_tools_with_context(
     return [
         fetch_repo_map,
         read_file,
+        read_file_snippet,
         run_grep,
         cpg_symbol_search,
         cpg_ast_index,
@@ -881,4 +1035,3 @@ def create_tools_with_context(
         cpg_cfg_region,
         cpg_summary,
     ]
-

@@ -29,6 +29,11 @@ class SystemConfig(BaseModel):
     asset_key: Optional[str] = Field(default=None, description="Asset key for repository-specific assets")
     max_concurrent_llm_requests: int = Field(default=5, ge=1, description="Maximum concurrent LLM API requests")
     max_expert_rounds: int = Field(default=20, ge=1, description="Maximum rounds for expert analysis (circuit breaker)")
+    max_expert_tool_calls: int = Field(
+        default=6,
+        ge=0,
+        description="Maximum tool calls per expert analysis (0 = no tools)",
+    )
 
 
 class Config(BaseModel):
@@ -170,6 +175,13 @@ class Config(BaseModel):
                 system_config.max_expert_rounds = int(os.getenv("MAX_EXPERT_ROUNDS", str(system_config.max_expert_rounds)))
             except ValueError:
                 pass
+        if os.getenv("MAX_EXPERT_TOOL_CALLS"):
+            try:
+                system_config.max_expert_tool_calls = int(
+                    os.getenv("MAX_EXPERT_TOOL_CALLS", str(system_config.max_expert_tool_calls))
+                )
+            except ValueError:
+                pass
         
         return cls(llm=llm_config, system=system_config)
     
@@ -199,4 +211,3 @@ class Config(BaseModel):
                 json.dump(config_dict, f, indent=2, ensure_ascii=False)
             else:
                 raise ValueError(f"Unsupported config file format: {suffix}")
-
