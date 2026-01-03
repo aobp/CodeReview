@@ -210,11 +210,23 @@ def build_expert_graph(
             描述: {risk_context.description}"""
 
         if file_content:
-            system_content += f"""
-            ## 文件完整内容
-            以下是该缺陷所在文件的完整内容。**严禁对当前文件{risk_context.file_path}调用 read_file 工具**，请直接使用以下内容：
+            # IMPORTANT: Do not inject full file content into the SystemMessage.
+            # It can easily exceed model context (e.g. 260k+ tokens). Provide a focused window.
+            try:
+                start_line, end_line = int(risk_context.line_number[0]), int(risk_context.line_number[1])
+            except Exception:
+                start_line, end_line = 1, 1
+            window = 200
+            lines = file_content.splitlines()
+            lo = max(1, start_line - window)
+            hi = min(len(lines), end_line + window)
+            snippet = "\n".join(f"{i}: {lines[i-1]}" for i in range(lo, hi + 1))
 
-            {file_content}"""
+            system_content += f"""
+            ## 文件内容（已截取窗口）
+            下面仅提供与风险行号相关的局部窗口（{lo}-{hi}）。如需更多上下文，请使用 read_file 工具按需读取（建议限制 max_lines）。
+
+            {snippet}"""
 
         system_content += f"""
             ## 输出格式要求

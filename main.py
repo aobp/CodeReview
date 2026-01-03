@@ -12,6 +12,7 @@
 import asyncio
 import argparse
 import sys
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -22,6 +23,7 @@ from assets.implementations.repo_map import RepoMapBuilder
 from agents.workflow import run_multi_agent_workflow
 from external_tools.syntax_checker import CheckerFactory, get_config
 from external_tools.syntax_checker.config_loader import create_checker_instance
+from util.lite_cpg_utils import prepare_lite_cpg_db
 from util import (
     generate_asset_key,
     get_git_info,
@@ -272,6 +274,26 @@ async def run_review(
     except Exception as e:
         log(f"⚠️  Warning: Could not ensure HEAD version: {e}")
         log(f"   Continuing with current version...")
+
+    # Step 0: Build per-diff Lite-CPG index DB (base/head revisions)
+    try:
+        log("\n🧠 Building Lite-CPG index (per-diff DB)...")
+        db_path = prepare_lite_cpg_db(
+            codereview_root=Path(__file__).resolve().parent,
+            repo_path=repo_path,
+            base_ref=base_branch,
+            head_ref=head_branch,
+            pr_diff=pr_diff,
+            store_blobs=True,
+        )
+        if os.environ.get("LITE_CPG_INDEX_SKIPPED") == "1":
+            log(f"✅ Lite-CPG DB already indexed, skip rebuild: {db_path}")
+        else:
+            log(f"✅ Lite-CPG DB indexed/refreshed: {db_path}")
+    except Exception as e:
+        log(f"⚠️  Warning: Lite-CPG indexing failed: {e}")
+        log("   Tip: This usually means tree-sitter parser binaries are missing/incompatible.")
+        log("   Tip: Ensure `pip install -r requirements.txt` in the same env, and consider installing language provider wheels like `tree-sitter-javascript`.")
 
     # Step 1: Initialize Storage (DAO layer)
     log("\n💾 Initializing storage backend...")
