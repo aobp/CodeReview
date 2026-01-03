@@ -3,6 +3,7 @@
 """
 
 import logging
+import os
 from typing import List, Optional, Any, Dict
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage, BaseMessage
 from langchain_core.output_parsers import PydanticOutputParser
@@ -107,6 +108,74 @@ def build_expert_graph(
         desc = getattr(tool, 'description', f'Tool: {tool.name}')
         tool_descriptions.append(f"- **{tool.name}**: {desc}")
     available_tools_text = "\n".join(tool_descriptions)
+
+    def _truncate_text(s: str, max_chars: int) -> str:
+        if max_chars <= 0:
+            return ""
+        if s is None:
+            return ""
+        if len(s) <= max_chars:
+            return s
+        return s[:max_chars] + "\n...[truncated]..."
+
+    def _copy_with_content(msg: BaseMessage, content: str) -> BaseMessage:
+        # langchain_core messages are pydantic models (v1/v2 depending on version)
+        if hasattr(msg, "model_copy"):
+            return msg.model_copy(update={"content": content})
+        if hasattr(msg, "copy"):
+            return msg.copy(update={"content": content})  # type: ignore[attr-defined]
+        # Fallback: best-effort reconstruct common types
+        if isinstance(msg, ToolMessage):
+            return ToolMessage(content=content, tool_call_id=getattr(msg, "tool_call_id", ""))
+        if isinstance(msg, HumanMessage):
+            return HumanMessage(content=content)
+        if isinstance(msg, SystemMessage):
+            return SystemMessage(content=content)
+        return msg
+
+    def _shrink_history(messages: List[BaseMessage]) -> List[BaseMessage]:
+        """Hard budget for LLM context: cap history length + truncate tool payloads."""
+        try:
+            max_history = int(os.environ.get("EXPERT_MAX_HISTORY_MESSAGES", "16"))
+        except Exception:
+            max_history = 16
+        try:
+            max_total_chars = int(os.environ.get("EXPERT_MAX_TOTAL_CHARS", "80000"))
+        except Exception:
+            max_total_chars = 80000
+        try:
+            max_tool_chars = int(os.environ.get("EXPERT_MAX_TOOL_CHARS", "6000"))
+        except Exception:
+            max_tool_chars = 6000
+
+        max_history = max(1, max_history)
+        max_total_chars = max(10_000, max_total_chars)
+        max_tool_chars = max(500, max_tool_chars)
+
+        # 1) keep only the most recent messages (history is append-only via add_messages)
+        tail = messages[-max_history:]
+
+        # 2) truncate oversized tool messages (biggest offender)
+        clipped: List[BaseMessage] = []
+        for m in tail:
+            c = getattr(m, "content", "")
+            if isinstance(c, str) and isinstance(m, ToolMessage) and len(c) > max_tool_chars:
+                clipped.append(_copy_with_content(m, _truncate_text(c, max_tool_chars)))
+            else:
+                clipped.append(m)
+
+        # 3) enforce total budget by dropping oldest remaining messages
+        def total_chars(msgs: List[BaseMessage]) -> int:
+            n = 0
+            for x in msgs:
+                cc = getattr(x, "content", "")
+                if isinstance(cc, str):
+                    n += len(cc)
+            return n
+
+        while len(clipped) > 1 and total_chars(clipped) > max_total_chars:
+            clipped.pop(0)
+        return clipped
     
     async def handle_circuit_breaker(
         messages: List[BaseMessage],
@@ -210,11 +279,23 @@ def build_expert_graph(
             描述: {risk_context.description}"""
 
         if file_content:
-            system_content += f"""
-            ## 文件完整内容
-            以下是该缺陷所在文件的完整内容。**严禁对当前文件{risk_context.file_path}调用 read_file 工具**，请直接使用以下内容：
+            # IMPORTANT: Do not inject full file content into the SystemMessage.
+            # It can easily exceed model context (e.g. 260k+ tokens). Provide a focused window.
+            try:
+                start_line, end_line = int(risk_context.line_number[0]), int(risk_context.line_number[1])
+            except Exception:
+                start_line, end_line = 1, 1
+            window = 200
+            lines = file_content.splitlines()
+            lo = max(1, start_line - window)
+            hi = min(len(lines), end_line + window)
+            snippet = "\n".join(f"{i}: {lines[i-1]}" for i in range(lo, hi + 1))
 
-            {file_content}"""
+            system_content += f"""
+            ## 文件内容（已截取窗口）
+            下面仅提供与风险行号相关的局部窗口（{lo}-{hi}）。如需更多上下文，请使用 read_file 工具按需读取（建议限制 max_lines）。
+
+            {snippet}"""
 
         system_content += f"""
             ## 输出格式要求
@@ -257,7 +338,7 @@ def build_expert_graph(
             new_messages = [system_msg, user_msg]
         else:
             # 后续轮次：直接使用历史消息（SystemMessage 已在第一轮添加）
-            new_messages = [system_msg, *messages]
+            new_messages = [system_msg, *_shrink_history([*messages])]
         
         # 调用 LLM（异步）
         response = await llm_with_tools.ainvoke(new_messages)

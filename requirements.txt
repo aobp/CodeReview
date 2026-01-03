@@ -17,7 +17,8 @@ langchain-openai>=0.1.0
 # python-dotenv>=1.0.0
 
 # Future: For tree-sitter integration
-# tree-sitter>=0.20.0
+# NOTE: required by CodeReview/lite_cpg (vendored Lite-CPG) for multi-language parsing
+tree-sitter>=0.20.0
 # tree-sitter-python>=0.20.0
 
 # For Git diff parsing
