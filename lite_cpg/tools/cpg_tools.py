@@ -79,7 +79,7 @@ def symbol_search(
                   JOIN files f ON f.file_id = s.file_id
                   JOIN file_versions fv ON fv.file_id = s.file_id AND fv.blob_hash = s.blob_hash
                  WHERE {' AND '.join(where)}
-                 {order_by}
+                     {order_by}
                  LIMIT ?;
                 """,
                 tuple(where_params + order_params + [int(limit)]),

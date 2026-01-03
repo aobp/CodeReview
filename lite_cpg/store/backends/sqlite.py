@@ -22,7 +22,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from ...core.builder import ParsedFile
 from ...core.cpg import Edge, LiteCPG, Node, Symbol
 from ...core.languages import create_parser, normalize_lang
-from ...repo.scan import RepoScanConfig, scan_repo
+from ...repo.scan import RepoScanConfig, infer_language, scan_repo
 from ...repo.versioning import content_hash
 
 
@@ -878,6 +878,7 @@ def index_repository(
     base_rev: Optional[str] = None,
     config: RepoScanConfig = RepoScanConfig(),
     store_blobs: bool = False,
+    paths: Optional[Sequence[Path]] = None,
     logger=None,
 ) -> Dict[str, int]:
     """Index a repository into SQLite, skipping unchanged file blobs.
@@ -890,14 +891,45 @@ def index_repository(
     with store.conn:
         store.begin_revision(rev, base_rev=base_rev)
 
-        files_by_lang = scan_repo(repo_root, config=config)
+        if paths is None:
+            files_by_lang = scan_repo(repo_root, config=config)
+        else:
+            # PR-scoped indexing: only index provided paths (best-effort filters aligned with scan_repo)
+            files_by_lang: Dict[str, List[Path]] = {}
+            for p in paths:
+                try:
+                    path = Path(p).resolve()
+                except Exception:
+                    continue
+                if not path.is_file():
+                    continue
+                # exclude by directory name
+                if any(part in config.exclude_dirs for part in path.parts):
+                    continue
+                try:
+                    if path.stat().st_size > config.max_file_bytes:
+                        continue
+                except OSError:
+                    continue
+                lang = infer_language(path)
+                if not lang:
+                    continue
+                if config.include_langs and lang not in config.include_langs:
+                    continue
+                files_by_lang.setdefault(lang, []).append(path)
+            for lang in files_by_lang:
+                files_by_lang[lang] = sorted(files_by_lang[lang], key=lambda p: str(p))
         for lang, paths in files_by_lang.items():
             lang_n = normalize_lang(lang)
             parser = create_parser(lang_n)
             for path in paths:
-                src = path.read_bytes()
+                try:
+                    src = path.read_bytes()
+                    stat = path.stat()
+                except Exception:
+                    # File may be deleted/renamed across revisions; skip best-effort.
+                    continue
                 blob_hash = content_hash(src)
-                stat = path.stat()
 
                 file_id = store.upsert_file(str(path.resolve()), lang_n)
                 store.upsert_file_version(rev, file_id, blob_hash, stat.st_size, stat.st_mtime)
