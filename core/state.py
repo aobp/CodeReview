@@ -13,13 +13,12 @@ import operator
 
 class RiskType(str, Enum):
     """代码审查风险类型。"""
-    NULL_SAFETY = "null_safety"  # 第二类：空值陷阱与边界防御
-    CONCURRENCY = "concurrency"  # 第三类：并发竞争与异步时序
-    SECURITY = "security"  # 第四类：安全漏洞与敏感数据
-    BUSINESS_INTENT = "business_intent"  # 第五类：业务意图与功能对齐
-    LIFECYCLE = "lifecycle"  # 第六类：生命周期与状态副作用
-    SYNTAX = "syntax"  # 语法与静态分析
-
+    ROBUSTNESS_BOUNDARY_CONDITIONS = "Robustness_Boundary_Conditions"  # 健壮性与边界条件
+    CONCURRENCY_TIMING_CORRECTNESS = "Concurrency_Timing_Correctness"  # 并发与时序正确性
+    AUTHORIZATION_DATA_EXPOSURE = "Authorization_Data_Exposure"  # 鉴权与数据暴露风险
+    INTENT_SEMANTIC_CONSISTENCY = "Intent_Semantic_Consistency"  # 需求意图与语义一致性
+    LIFECYCLE_STATE_CONSISTENCY = "Lifecycle_State_Consistency"  # 生命周期与状态一致性
+    SYNTAX_STATIC_ERRORS = "Syntax_Static_Errors"  # 语法与静态错误
 
 class RiskItem(BaseModel):
     """代码审查中识别的单个风险项。
@@ -33,7 +32,7 @@ class RiskItem(BaseModel):
     confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Confidence score")
     severity: str = Field(default="warning", description="Severity: error, warning, or info")
     suggestion: Optional[str] = Field(default=None, description="Optional suggestion for fixing")
-    
+
     @field_validator('line_number', mode='before')
     @classmethod
     def normalize_line_number(cls, v: Any) -> Tuple[int, int]:
@@ -131,4 +130,3 @@ class ExpertState(TypedDict):
     final_result: Optional[dict]  # 输出：最终验证结果(JSON)
     diff_context: Optional[str]  # 文件的 diff 上下文
     file_content: Optional[str]  # 文件的完整内容
-

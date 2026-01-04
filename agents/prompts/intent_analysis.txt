@@ -10,7 +10,10 @@
 2. **行号格式**：所有风险项的 line_number 必须是数组 `[start_line, end_line]`（1-indexed）。单行也必须写成 `[line, line]`。
 3. **必须锚定到变更**：每条风险必须对应到本次 diff 中的实际变更或其紧邻上下文；不要基于“全文件猜测”生成无锚点风险。
 4. **数量控制**：`potential_risks` 建议最多输出 3–8 条（宁可少而准），并优先保留高风险/高信号项。
-5. **描述格式（建议）**：description 第一行可写 `命中模式: <risk_type>-<id>`（可多选），便于后续专家复核；不要复述下方“危险模式大全”的定义文本。
+5. **描述最小化**：`potential_risks[].description` 只能包含两部分：
+   - 第一行：`命中模式: <risk_type>-<id>`（可选）
+   - 第二行：一句可证伪的问题陈述（只描述“哪里可能有问题/缺了什么检查”，不要写推理过程、不要下结论、不要写修复方案）
+6. **不要输出 suggestion**：`potential_risks[].suggestion` 请保持为 `null` 或不提供（避免对专家产生锚定偏差）。
 
 ## Task
 请分析该文件并提供以下内容：
@@ -19,7 +22,7 @@
 3. **复杂度评分(Complexity Score)：对本次变更的复杂度进行评分（0–100）。
 4. **风险合并规则(Risk merging rule)：仅当以下所有条件同时满足时，才合并风险项：
 文件路径相同
-风险类型相同(例如 security、null_safety)
+风险类型相同(例如 Authorization_Data_Exposure、Robustness_Boundary_Conditions)
 行号接近(相差不超过 10 行)
 描述语义相似(例如描述的是同一种类型、同一变量的同类漏洞场景)
 合并时，必须保留所有原始行号(例如 [70, 71]和[73, 78]合并为[70, 78])，并完整保留所有原始描述文本——不得总结、改写或省略任何部分。
@@ -29,8 +32,8 @@
 在识别潜在风险时，请使用以下五类风险类型。每类都包含其定义及应重点关注的危险模式。
 ---
 
-### 1. 空值陷阱与边界防御 (Null Safety & Boundary Defense)
-**Risk Type**: `null_safety`
+### 1. 健壮性与边界条件 (Robustness & Boundary Conditions)
+**Risk Type**: `Robustness_Boundary_Conditions`
 
 **定义**：代码假设了"理想数据流"，未处理数据缺失（Null/Undefined）、空集合或非法格式，导致运行时崩溃或逻辑穿透。
 
@@ -58,8 +61,8 @@
 
 ---
 
-### 2. 并发竞争与异步时序 (Concurrency & Async Timing)
-**Risk Type**: `concurrency`
+### 2. 并发与时序正确性 (Concurrency & Timing Correctness)
+**Risk Type**: `Concurrency_Timing_Correctness`
 
 **定义**：涉及多线程、异步回调或执行顺序依赖的问题。代码在单元测试中可能通过，但在高并发或特定时序下失效。
 
@@ -88,8 +91,8 @@
 
 ---
 
-### 3. 安全漏洞与敏感数据 (Security & Authorization)
-**Risk Type**: `security`
+### 3. 鉴权与数据暴露风险 (Authorization & Data Exposure)
+**Risk Type**: `Authorization_Data_Exposure`
 
 **定义**：代码逻辑允许未授权访问、导致数据泄露或存在被注入的风险。
 
@@ -120,8 +123,8 @@
 
 ---
 
-### 4. 业务意图与功能对齐 (Business Intent & Functional Alignment)
-**Risk Type**: `business_intent`
+### 4. 需求意图与语义一致性 (Intent & Semantic Consistency)
+**Risk Type**: `Intent_Semantic_Consistency`
 
 **定义**：代码准确执行了指令，但指令逻辑本身与业务需求、数学公理或现实世界规则不符。
 
@@ -143,8 +146,8 @@
 
 ---
 
-### 5. 生命周期与状态副作用 (Lifecycle, State & Side Effects)
-**Risk Type**: `lifecycle`
+### 5. 生命周期与状态一致性 (Lifecycle & State Consistency)
+**Risk Type**: `Lifecycle_State_Consistency`
 
 **定义**：涉及对象/资源的创建与销毁、全局状态管理、缓存一致性以及框架特定的生命周期问题。
 

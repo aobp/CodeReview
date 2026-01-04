@@ -161,7 +161,7 @@ async def run_expert_group(
     control to limit simultaneous LLM API calls.
     
     Args:
-        risk_type_str: Risk type as string (e.g., "null_safety", "concurrency", "security").
+        risk_type_str: Risk type as string (e.g., "Robustness_Boundary_Conditions", "Concurrency_Timing_Correctness").
         tasks: List of RiskItem objects to process.
         global_state: Global workflow state for context.
         config: Configuration object.

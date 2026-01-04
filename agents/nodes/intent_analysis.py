@@ -177,7 +177,7 @@ def _parse_intent_analysis_response(response: str, file_path: str) -> FileAnalys
                         continue
                     
                     risk_item = RiskItem(
-                        risk_type=RiskType(risk_data.get("risk_type", "null_safety")),
+                        risk_type=risk_data.get("risk_type", RiskType.ROBUSTNESS_BOUNDARY_CONDITIONS.value),
                         file_path=risk_data.get("file_path", file_path),
                         line_number=line_number,
                         description=risk_data.get("description", ""),

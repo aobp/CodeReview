@@ -33,12 +33,12 @@ Generate a markdown-formatted report with the following structure (output markdo
 [List suggestions for improvement]
 
 ## Summary by Risk Type
-- Null Safety (空值陷阱与边界防御): [count]
-- Concurrency (并发竞争与异步时序): [count]
-- Security (安全漏洞与敏感数据): [count]
-- Business Intent (业务意图与功能对齐): [count]
-- Lifecycle (生命周期与状态副作用): [count]
-- Syntax (语法与静态分析): [count]
+- Robustness (健壮性与边界条件): [count]
+- Concurrency (并发与时序正确性): [count]
+- Authorization (鉴权与数据暴露风险): [count]
+- Intent & Semantics (需求意图与语义一致性): [count]
+- Lifecycle & State (生命周期与状态一致性): [count]
+- Syntax (语法与静态错误): [count]
 
 ## Recommendations
 [Overall recommendations for the codebase]

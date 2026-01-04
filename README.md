@@ -194,12 +194,12 @@ asyncio.run(review_code())
 
 系统识别以下 6 种风险类型：
 
-- **NULL_SAFETY**：空值陷阱与边界防御
-- **CONCURRENCY**：并发竞争与异步时序
-- **SECURITY**：安全漏洞与敏感数据
-- **BUSINESS_INTENT**：业务意图与功能对齐
-- **LIFECYCLE**：生命周期与状态副作用
-- **SYNTAX**：语法与静态分析
+- **ROBUSTNESS_BOUNDARY_CONDITIONS** (`Robustness_Boundary_Conditions`)：健壮性与边界条件
+- **CONCURRENCY_TIMING_CORRECTNESS** (`Concurrency_Timing_Correctness`)：并发与时序正确性
+- **AUTHORIZATION_DATA_EXPOSURE** (`Authorization_Data_Exposure`)：鉴权与数据暴露风险
+- **INTENT_SEMANTIC_CONSISTENCY** (`Intent_Semantic_Consistency`)：需求意图与语义一致性
+- **LIFECYCLE_STATE_CONSISTENCY** (`Lifecycle_State_Consistency`)：生命周期与状态一致性
+- **SYNTAX_STATIC_ERRORS** (`Syntax_Static_Errors`)：语法与静态错误
 
 ### 智能体自主性
 

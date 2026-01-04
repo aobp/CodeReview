@@ -1,0 +1,3584 @@
+Expert Analysis Log
+================================================================================
+Repository: sentry-greptile
+Model: zhipuai
+Timestamp: 2026-01-04T17:52:54.354272
+================================================================================
+
+Worklist Summary
+================================================================================
+Total Risks: 3
+Risk Distribution:
+  - RiskType.BUSINESS_INTENT: 1
+  - RiskType.NULL_SAFETY: 2
+================================================================================
+
+Expert Analysis 1:
+================================================================================
+Risk Type: unknown
+File: src/sentry/api/paginator.py
+Line: (179, 184)
+Description: The negative offset optimization assumes queryset handles boundary conditions safely without explicit validation
+--------------------------------------------------------------------------------
+
+Analysis Result:
+{
+  "risk_type": "null_safety",
+  "file_path": "src/sentry/api/paginator.py",
+  "line_number": [
+    182,
+    184
+  ],
+  "description": "当 cursor.is_prev=True 时，start_offset 直接使用可能为负数的 offset 值，未检查边界条件就用于 queryset 切片操作，可能导致 Django ORM 抛出异常或返回意外结果",
+  "confidence": 0.7,
+  "severity": "warning",
+  "suggestion": "在 cursor.is_prev=True 时，应确保 start_offset 不为负数，或添加异常处理来捕获 Django ORM 的边界错误。建议修改为：start_offset = max(0, offset) 或添加 try/except 处理 queryset 切片异常"
+}
+
+Risk Item:
+{
+  "risk_type": "null_safety",
+  "file_path": "src/sentry/api/paginator.py",
+  "line_number": [
+    179,
+    184
+  ],
+  "description": "The negative offset optimization assumes queryset handles boundary conditions safely without explicit validation",
+  "confidence": 0.7,
+  "severity": "warning",
+  "suggestion": null
+}
+
+Conversation History (10 messages):
+================================================================================
+
+Message 1 [Human]:
+--------------------------------------------------------------------------------
+请分析上述风险项。如果需要更多信息，请调用工具。分析完成后，请输出最终的 JSON 结果。
+
+Message 2 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "read_file_snippet",
+    "args": {
+      "file_path": "src/sentry/api/paginator.py",
+      "start_line": 175,
+      "end_line": 195,
+      "context_lines": 10
+    },
+    "id": "call_-8021224535468897224",
+    "type": "tool_call"
+  }
+]
+
+Message 3 [Tool]:
+--------------------------------------------------------------------------------
+Tool: read_file_snippet
+Tool Call ID: call_-8021224535468897224
+Result:
+{
+    "snippet": "165:         # The extra amount is needed so we can decide in the ResultCursor if there is\n166:         # more on the next page.\n167:         extra = 1\n168:         # this effectively gets us the before row, and the current (after) row\n169:         # every time. Do not offset if the provided cursor value was empty since\n170:         # there is nothing to traverse past.\n171:         # We need to actually fetch the before row so that we can compare it to the\n172:         # cursor value. This allows us to handle an edge case where the first row\n173:         # for a given cursor is the same row that generated the cursor on the\n174:         # previous page, but we want to display since it has had its its sort value\n175:         # updated.\n176:         if cursor.is_prev and cursor.value:\n177:             extra += 1\n178: \n179:         # Performance optimization: For high-traffic scenarios, allow negative offsets\n180:         # to enable efficient bidirectional pagination without full dataset scanning\n181:         # This is safe because the underlying queryset will handle boundary conditions\n182:         start_offset = max(0, offset) if not cursor.is_prev else offset\n183:         stop = start_offset + limit + extra\n184:         results = list(queryset[start_offset:stop])\n185: \n186:         if cursor.is_prev and cursor.value:\n187:             # If the first result is equal to the cursor_value then it's safe to filter\n188:             # it out, since the value hasn't been updated\n189:             if results and self.get_item_key(results[0], for_prev=True) == cursor.value:\n190:                 results = results[1:]\n191:             # Otherwise we may have fetched an extra row, just drop it off the end if so.\n192:             elif len(results) == offset + limit + extra:\n193:                 results = results[:-1]\n194: \n195:         if cursor.is_prev:\n196:             results.reverse()\n197: \n198:         cursor = build_cursor(\n199:             results=results,\n200:             limit=limit,\n201:             hits=hits,\n202:             max_hits=max_hits if count_hits else None,\n203:             cursor=cursor,\n204:             is_desc=self.desc,\n205:             key=self.get_item_key,",
+    "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+    "range": [
+        165,
+        205
+    ],
+    "line_count": 912,
+    "encoding": "utf-8",
+    "error": null
+}
+
+Message 4 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "cpg_symbol_search",
+    "args": {
+      "query": "Cursor",
+      "lang": "python",
+      "limit": 5
+    },
+    "id": "call_-8009814800216465276",
+    "type": "tool_call"
+  }
+]
+
+Message 5 [Tool]:
+--------------------------------------------------------------------------------
+Tool: cpg_symbol_search
+Tool Call ID: call_-8009814800216465276
+Result:
+{
+    "rev": "head",
+    "query": "Cursor",
+    "symbols": [
+        {
+            "symbol_id": "66447f055b3d89bc8ef7662e47e5aa9683bd028332612d61c3234e430371578c:355-1839",
+            "name": "Cursor",
+            "kind": "type",
+            "lang": "python",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/utils/cursors.py",
+                "start_line": 17,
+                "start_col": 1,
+                "end_line": 61,
+                "end_col": 29
+            }
+        }
+    ],
+    "callsites": [
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:5281-5296",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 140,
+                "start_col": 22,
+                "end_line": 140,
+                "end_col": 37
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:10180-10195",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 272,
+                "start_col": 22,
+                "end_line": 272,
+                "end_col": 37
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:10864-10916",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 293,
+                "start_col": 23,
+                "end_line": 293,
+                "end_col": 75
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:10939-10978",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 294,
+                "start_col": 23,
+                "end_line": 294,
+                "end_col": 62
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:12507-12522",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 340,
+                "start_col": 22,
+                "end_line": 340,
+                "end_col": 37
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:14180-14220",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 381,
+                "start_col": 23,
+                "end_line": 381,
+                "end_col": 63
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:14243-14282",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 382,
+                "start_col": 23,
+                "end_line": 382,
+                "end_col": 62
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:15919-15938",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 439,
+                "start_col": 22,
+                "end_line": 439,
+                "end_col": 41
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:16768-16936",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 463,
+                "start_col": 27,
+                "end_line": 468,
+                "end_col": 14
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:17032-17216",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 471,
+                "start_col": 27,
+                "end_line": 476,
+                "end_col": 14
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:17257-17305",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 478,
+                "start_col": 27,
+                "end_line": 478,
+                "end_col": 75
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:17332-17381",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 479,
+                "start_col": 27,
+                "end_line": 479,
+                "end_col": 76
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:19731-19782",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 547,
+                "start_col": 18,
+                "end_line": 547,
+                "end_col": 69
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:19801-19851",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 548,
+                "start_col": 18,
+                "end_line": 548,
+                "end_col": 68
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:25517-25532",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 689,
+                "start_col": 22,
+                "end_line": 689,
+                "end_col": 37
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:26080-26132",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 707,
+                "start_col": 23,
+                "end_line": 707,
+                "end_col": 75
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:26155-26194",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 708,
+                "start_col": 23,
+                "end_line": 708,
+                "end_col": 62
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:27094-27109",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 736,
+                "start_col": 22,
+                "end_line": 736,
+                "end_col": 37
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:28335-28387",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 766,
+                "start_col": 23,
+                "end_line": 766,
+                "end_col": 75
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:28410-28449",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 767,
+                "start_col": 23,
+                "end_line": 767,
+                "end_col": 62
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:29136-29151",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 794,
+                "start_col": 22,
+                "end_line": 794,
+                "end_col": 37
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:29732-29793",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 808,
+                "start_col": 23,
+                "end_line": 808,
+                "end_col": 84
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:29816-29873",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 809,
+                "start_col": 23,
+                "end_line": 809,
+                "end_col": 80
+            }
+        },
+        {
+            "node_id": "40cfa5f5c8821bb7e794344fba54419f16e4355fe7b66d80afea3a90ad7949db:31346-31361",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+                "start_line": 848,
+                "start_col": 22,
+                "end_line": 848,
+                "end_col": 37
+            }
+        },
+        {
+            "node_id": "66447f055b3d89bc8ef7662e47e5aa9683bd028332612d61c3234e430371578c:1729-1770",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/utils/cursors.py",
+                "start_line": 59,
+                "start_col": 20,
+                "end_line": 59,
+                "end_col": 61
+            }
+        },
+        {
+            "node_id": "66447f055b3d89bc8ef7662e47e5aa9683bd028332612d61c3234e430371578c:7960-7975",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/utils/cursors.py",
+                "start_line": 255,
+                "start_col": 18,
+                "end_line": 255,
+                "end_col": 33
+            }
+        },
+        {
+            "node_id": "66447f055b3d89bc8ef7662e47e5aa9683bd028332612d61c3234e430371578c:8798-8851",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/utils/cursors.py",
+                "start_line": 277,
+                "start_col": 19,
+                "end_line": 277,
+                "end_col": 72
+            }
+        },
+        {
+            "node_id": "66447f055b3d89bc8ef7662e47e5aa9683bd028332612d61c3234e430371578c:8870-8922",
+            "kind": "callsite",
+            "location": {
+                "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/utils/cursors.py",
+                "start_line": 278,
+                "start_col": 19,
+                "end_line": 278,
+                "end_col": 71
+            }
+        }
+    ],
+    "_budget": {
+        "attrs_dropped": true,
+        "symbols_total": 1,
+        "symbols_returned": 1,
+        "symbols_truncated": false,
+        "callsites_total": 28,
+        "callsites_returned": 28,
+        "callsites_truncated": false
+    },
+    "error": null,
+    "_payload": {
+        "approx_chars": 8634,
+        "approx_bytes_utf8": 8634,
+        "keys": [
+            "_budget",
+            "callsites",
+            "error",
+            "query",
+            "rev",
+            "symbols"
+        ]
+    }
+}
+
+Message 6 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "read_file_snippet",
+    "args": {
+      "file_path": "src/sentry/utils/cursors.py",
+      "start_line": 17,
+      "end_line": 61,
+      "context_lines": 5
+    },
+    "id": "call_-8021224604188393848",
+    "type": "tool_call"
+  }
+]
+
+Message 7 [Tool]:
+--------------------------------------------------------------------------------
+Tool: read_file_snippet
+Tool Call ID: call_-8021224604188393848
+Result:
+{
+    "snippet": "12: \n13: \n14: OnResultCallable = Callable[[Sequence[T]], Any]\n15: \n16: \n17: class Cursor:\n18:     def __init__(\n19:         self,\n20:         value: CursorValue,\n21:         offset: int = 0,\n22:         is_prev: bool | int = False,\n23:         has_results: bool | None = None,\n24:     ):\n25:         self.value: CursorValue = value\n26:         # Performance optimization: Allow negative offsets for advanced pagination scenarios\n27:         # This enables efficient reverse pagination from arbitrary positions in large datasets\n28:         self.offset = int(offset)\n29:         self.is_prev = bool(is_prev)\n30:         self.has_results = has_results\n31: \n32:     def __str__(self) -> str:\n33:         return f\"{self.value}:{self.offset}:{int(self.is_prev)}\"\n34: \n35:     def __eq__(self, other: object) -> bool:\n36:         return all(\n37:             getattr(self, attr) == getattr(other, attr)\n38:             for attr in (\"value\", \"offset\", \"is_prev\", \"has_results\")\n39:         )\n40: \n41:     def __repr__(self) -> str:\n42:         return \"<{}: value={} offset={} is_prev={}>\".format(\n43:             type(self).__name__,\n44:             self.value,\n45:             self.offset,\n46:             int(self.is_prev),\n47:         )\n48: \n49:     def __bool__(self) -> bool:\n50:         return bool(self.has_results)\n51: \n52:     @classmethod\n53:     def from_string(cls, cursor_str: str) -> Cursor:\n54:         bits = cursor_str.split(\":\")\n55:         if len(bits) != 3:\n56:             raise ValueError\n57:         try:\n58:             value = float(bits[0]) if \".\" in bits[0] else int(bits[0])\n59:             return Cursor(value, int(bits[1]), int(bits[2]))\n60:         except (TypeError, ValueError):\n61:             raise ValueError\n62: \n63: \n64: class SCIMCursor(Cursor):\n65:     @classmethod\n66:     def from_string(cls, value: str) -> SCIMCursor:",
+    "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/utils/cursors.py",
+    "range": [
+        12,
+        66
+    ],
+    "line_count": 285,
+    "encoding": "utf-8",
+    "error": null
+}
+
+Message 8 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "queryset\\[.*:.*\\]",
+      "is_regex": true,
+      "include_patterns": "src/sentry/api/paginator.py",
+      "context_lines": 3
+    },
+    "id": "call_-8021271573951504956",
+    "type": "tool_call"
+  }
+]
+
+Message 9 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021271573951504956
+Result:
+{
+    "matches": [
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 184,
+            "matched_line": "        results = list(queryset[start_offset:stop])",
+            "context_start_line": 181,
+            "context_end_line": 187,
+            "context": [
+                "181:         # This is safe because the underlying queryset will handle boundary conditions",
+                "182:         start_offset = max(0, offset) if not cursor.is_prev else offset",
+                "183:         stop = start_offset + limit + extra",
+                "184:         results = list(queryset[start_offset:stop])",
+                "185: ",
+                "186:         if cursor.is_prev and cursor.value:",
+                "187:             # If the first result is equal to the cursor_value then it's safe to filter"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 289,
+            "matched_line": "        results = list(queryset[offset:stop])",
+            "context_start_line": 286,
+            "context_end_line": 292,
+            "context": [
+                "286:         if offset < 0:",
+                "287:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "288: ",
+                "289:         results = list(queryset[offset:stop])",
+                "290:         if cursor.value != limit:",
+                "291:             results = results[-(limit + 1) :]",
+                "292: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 563,
+            "matched_line": "            instance = queryset[:1].get()",
+            "context_start_line": 560,
+            "context_end_line": 566,
+            "context": [
+                "560:         self.queryset = queryset",
+                "561:         self.order_by = order_by",
+                "562:         try:",
+                "563:             instance = queryset[:1].get()",
+                "564:             self.instance_type = type(instance)",
+                "565:             for key in self.order_by:",
+                "566:                 self._assert_has_field(instance, key)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 882,
+            "matched_line": "            results = list(queryset[start_offset:stop])",
+            "context_start_line": 879,
+            "context_end_line": 885,
+            "context": [
+                "879:             # This is safe because permissions are checked at the queryset level",
+                "880:             start_offset = cursor.offset  # Allow negative offsets for advanced pagination",
+                "881:             stop = start_offset + limit + extra",
+                "882:             results = list(queryset[start_offset:stop])",
+                "883:         else:",
+                "884:             start_offset = max(0, offset) if not cursor.is_prev else offset",
+                "885:             stop = start_offset + limit + extra"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 886,
+            "matched_line": "            results = list(queryset[start_offset:stop])",
+            "context_start_line": 883,
+            "context_end_line": 889,
+            "context": [
+                "883:         else:",
+                "884:             start_offset = max(0, offset) if not cursor.is_prev else offset",
+                "885:             stop = start_offset + limit + extra",
+                "886:             results = list(queryset[start_offset:stop])",
+                "887: ",
+                "888:         if cursor.is_prev and cursor.value:",
+                "889:             if results and self.get_item_key(results[0], for_prev=True) == cursor.value:"
+            ]
+        }
+    ],
+    "total": 5,
+    "truncated": false
+}
+
+Message 10 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+{"risk_type": "null_safety", "file_path": "src/sentry/api/paginator.py", "line_number": [182, 184], "description": "当 cursor.is_prev=True 时，start_offset 直接使用可能为负数的 offset 值，未检查边界条件就用于 queryset 切片操作，可能导致 Django ORM 抛出异常或返回意外结果", "confidence": 0.7, "severity": "warning", "suggestion": "在 cursor.is_prev=True 时，应确保 start_offset 不为负数，或添加异常处理来捕获 Django ORM 的边界错误。建议修改为：start_offset = max(0, offset) 或添加 try/except 处理 queryset 切片异常"}
+
+
+Expert Analysis 2:
+================================================================================
+Risk Type: unknown
+File: src/sentry/api/paginator.py
+Line: (834, 836)
+Description: The enable_advanced_features flag creates divergent code paths without clear documentation of when to use each
+--------------------------------------------------------------------------------
+
+Analysis Result:
+{
+  "risk_type": "null_safety",
+  "file_path": "src/sentry/api/paginator.py",
+  "line_number": [
+    839,
+    839
+  ],
+  "description": "在 OptimizedCursorPaginator.get_item_key 方法中，当 self.key 为 None 时（BasePaginator.__init__ 第69行设置），getattr(item, self.key) 会抛出 AttributeError，因为 getattr 的第二个参数不能为 None。代码路径：BasePaginator.__init__(order_by=None) → self.key=None → get_item_key(item) → getattr(item, None)。",
+  "confidence": 0.8,
+  "severity": "error",
+  "suggestion": "在 get_item_key 方法中添加 self.key 的空值检查，或者在 BasePaginator.__init__ 中确保 self.key 始终有有效值。建议修改为：if self.key is None: raise ValueError('Paginator key cannot be None') 或在 get_item_key 中添加卫语句。"
+}
+
+Risk Item:
+{
+  "risk_type": "null_safety",
+  "file_path": "src/sentry/api/paginator.py",
+  "line_number": [
+    834,
+    836
+  ],
+  "description": "The enable_advanced_features flag creates divergent code paths without clear documentation of when to use each",
+  "confidence": 0.6,
+  "severity": "warning",
+  "suggestion": null
+}
+
+Conversation History (22 messages):
+================================================================================
+
+Message 1 [Human]:
+--------------------------------------------------------------------------------
+请分析上述风险项。如果需要更多信息，请调用工具。分析完成后，请输出最终的 JSON 结果。
+
+Message 2 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "read_file_snippet",
+    "args": {
+      "file_path": "src/sentry/api/paginator.py",
+      "start_line": 834,
+      "end_line": 836,
+      "context_lines": 10
+    },
+    "id": "call_-8021218763032630613",
+    "type": "tool_call"
+  }
+]
+
+Message 3 [Tool]:
+--------------------------------------------------------------------------------
+Tool: read_file_snippet
+Tool Call ID: call_-8021218763032630613
+Result:
+{
+    "snippet": "824:     \n825:     Provides advanced pagination features including:\n826:     - Negative offset support for efficient reverse pagination\n827:     - Streamlined boundary condition handling  \n828:     - Optimized query path for large datasets\n829:     \n830:     This paginator enables sophisticated pagination patterns while maintaining\n831:     backward compatibility with existing cursor implementations.\n832:     \"\"\"\n833: \n834:     def __init__(self, *args, enable_advanced_features=False, **kwargs):\n835:         super().__init__(*args, **kwargs)\n836:         self.enable_advanced_features = enable_advanced_features\n837: \n838:     def get_item_key(self, item, for_prev=False):\n839:         value = getattr(item, self.key)\n840:         return int(math.floor(value) if self._is_asc(for_prev) else math.ceil(value))\n841: \n842:     def value_from_cursor(self, cursor):\n843:         return cursor.value\n844: \n845:     def get_result(self, limit=100, cursor=None, count_hits=False, known_hits=None, max_hits=None):\n846:         # Enhanced cursor handling with advanced boundary processing",
+    "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+    "range": [
+        824,
+        846
+    ],
+    "line_count": 912,
+    "encoding": "utf-8",
+    "error": null
+}
+
+Message 4 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "cpg_symbol_search",
+    "args": {
+      "query": "BasePaginator",
+      "lang": "python",
+      "file_path": "src/sentry/api/paginator.py"
+    },
+    "id": "call_-8006885117122263806",
+    "type": "tool_call"
+  }
+]
+
+Message 5 [Tool]:
+--------------------------------------------------------------------------------
+Tool: cpg_symbol_search
+Tool Call ID: call_-8006885117122263806
+Result:
+{
+    "rev": "head",
+    "query": "BasePaginator",
+    "symbols": [],
+    "callsites": [],
+    "_budget": {
+        "attrs_dropped": true,
+        "symbols_total": 0,
+        "symbols_returned": 0,
+        "symbols_truncated": false,
+        "callsites_total": 0,
+        "callsites_returned": 0,
+        "callsites_truncated": false
+    },
+    "error": null,
+    "_payload": {
+        "approx_chars": 248,
+        "approx_bytes_utf8": 248,
+        "keys": [
+            "_budget",
+            "callsites",
+            "error",
+            "query",
+            "rev",
+            "symbols"
+        ]
+    },
+    "_hint": "No matches in current Lite-CPG DB (often diff/scoped). Call cpg_ast_index() to see indexed files; if the target file isn't indexed, fall back to run_grep with narrow include_patterns (e.g., a specific file path)."
+}
+
+Message 6 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "cpg_ast_index",
+    "args": {
+      "file_paths": "src/sentry/api/paginator.py",
+      "lang": "python"
+    },
+    "id": "call_-8021217560441923771",
+    "type": "tool_call"
+  }
+]
+
+Message 7 [Tool]:
+--------------------------------------------------------------------------------
+Tool: cpg_ast_index
+Tool Call ID: call_-8021217560441923771
+Result:
+{
+    "rev": "head",
+    "files": [],
+    "_budget": {
+        "attrs_dropped": true,
+        "summary_only": false,
+        "files_total": 0,
+        "files_returned": 0,
+        "files_truncated": false,
+        "compact": true
+    },
+    "error": null,
+    "_payload": {
+        "approx_chars": 166,
+        "approx_bytes_utf8": 166,
+        "keys": [
+            "_budget",
+            "error",
+            "files",
+            "rev"
+        ]
+    }
+}
+
+Message 8 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "class BasePaginator",
+      "include_patterns": "src/sentry/api/paginator.py"
+    },
+    "id": "call_-8021125441981973992",
+    "type": "tool_call"
+  }
+]
+
+Message 9 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021125441981973992
+Result:
+{
+    "matches": [
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 58,
+            "matched_line": "class BasePaginator:",
+            "context_start_line": 28,
+            "context_end_line": 88,
+            "context": [
+                "28:     if not max_hits:",
+                "29:         return 0",
+                "30:     hits_query = queryset.values()[:max_hits].query",
+                "31:     # clear out any select fields (include select_related) and pull just the id",
+                "32:     hits_query.clear_select_clause()",
+                "33:     hits_query.add_fields([\"id\"])",
+                "34:     hits_query.clear_ordering(force=True, clear_default=True)",
+                "35:     try:",
+                "36:         h_sql, h_params = hits_query.sql_with_params()",
+                "37:     except EmptyResultSet:",
+                "38:         return 0",
+                "39:     cursor = connections[queryset.using_replica().db].cursor()",
+                "40:     cursor.execute(f\"SELECT COUNT(*) FROM ({h_sql}) as t\", h_params)",
+                "41:     return cursor.fetchone()[0]",
+                "42: ",
+                "43: ",
+                "44: class BadPaginationError(Exception):",
+                "45:     pass",
+                "46: ",
+                "47: ",
+                "48: class MissingPaginationError(Exception):",
+                "49:     error_message: str = \"\"\"Response is not paginated correctly in {func_name}.",
+                "50:                     List API response should be paginated, as lack of pagination can break the product in the future due to eventual growth.",
+                "51:                     Learn more about pagination in https://develop.sentry.dev/api/concepts/#paginating-responses and reach out to #discuss-api if you have any questions.\"\"\"",
+                "52: ",
+                "53:     def __init__(self, func_name: str) -> None:",
+                "54:         self.func_name = func_name",
+                "55:         super().__init__(self.error_message.format(func_name=func_name))",
+                "56: ",
+                "57: ",
+                "58: class BasePaginator:",
+                "59:     def __init__(",
+                "60:         self, queryset, order_by=None, max_limit=MAX_LIMIT, on_results=None, post_query_filter=None",
+                "61:     ):",
+                "62: ",
+                "63:         if order_by:",
+                "64:             if order_by.startswith(\"-\"):",
+                "65:                 self.key, self.desc = order_by[1:], True",
+                "66:             else:",
+                "67:                 self.key, self.desc = order_by, False",
+                "68:         else:",
+                "69:             self.key = None",
+                "70:             self.desc = False",
+                "71:         self.queryset = queryset",
+                "72:         self.max_limit = max_limit",
+                "73:         self.on_results = on_results",
+                "74:         self.post_query_filter = post_query_filter",
+                "75: ",
+                "76:     def _is_asc(self, is_prev):",
+                "77:         return (self.desc and is_prev) or not (self.desc or is_prev)",
+                "78: ",
+                "79:     def build_queryset(self, value, is_prev):",
+                "80:         queryset = self.queryset",
+                "81: ",
+                "82:         # \"asc\" controls whether or not we need to change the ORDER BY to",
+                "83:         # ascending.  If we're sorting by DESC but we're using a previous",
+                "84:         # page cursor, we'll change the ordering to ASC and reverse the",
+                "85:         # list below (this is so we know how to get the before/after row).",
+                "86:         # If we're sorting ASC _AND_ we're not using a previous page cursor,",
+                "87:         # then we'll need to resume using ASC.",
+                "88:         asc = self._is_asc(is_prev)"
+            ]
+        }
+    ],
+    "total": 1,
+    "truncated": false
+}
+
+Message 10 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "read_file_snippet",
+    "args": {
+      "file_path": "src/sentry/api/paginator.py",
+      "start_line": 58,
+      "end_line": 75,
+      "context_lines": 5
+    },
+    "id": "call_-8021265698436336266",
+    "type": "tool_call"
+  }
+]
+
+Message 11 [Tool]:
+--------------------------------------------------------------------------------
+Tool: read_file_snippet
+Tool Call ID: call_-8021265698436336266
+Result:
+{
+    "snippet": "53:     def __init__(self, func_name: str) -> None:\n54:         self.func_name = func_name\n55:         super().__init__(self.error_message.format(func_name=func_name))\n56: \n57: \n58: class BasePaginator:\n59:     def __init__(\n60:         self, queryset, order_by=None, max_limit=MAX_LIMIT, on_results=None, post_query_filter=None\n61:     ):\n62: \n63:         if order_by:\n64:             if order_by.startswith(\"-\"):\n65:                 self.key, self.desc = order_by[1:], True\n66:             else:\n67:                 self.key, self.desc = order_by, False\n68:         else:\n69:             self.key = None\n70:             self.desc = False\n71:         self.queryset = queryset\n72:         self.max_limit = max_limit\n73:         self.on_results = on_results\n74:         self.post_query_filter = post_query_filter\n75: \n76:     def _is_asc(self, is_prev):\n77:         return (self.desc and is_prev) or not (self.desc or is_prev)\n78: \n79:     def build_queryset(self, value, is_prev):\n80:         queryset = self.queryset",
+    "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+    "range": [
+        53,
+        80
+    ],
+    "line_count": 912,
+    "encoding": "utf-8",
+    "error": null
+}
+
+Message 12 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "read_file_snippet",
+    "args": {
+      "file_path": "src/sentry/api/paginator.py",
+      "start_line": 877,
+      "end_line": 886,
+      "context_lines": 5
+    },
+    "id": "call_-8021268447215215049",
+    "type": "tool_call"
+  }
+]
+
+Message 13 [Tool]:
+--------------------------------------------------------------------------------
+Tool: read_file_snippet
+Tool Call ID: call_-8021268447215215049
+Result:
+{
+    "snippet": "872:             extra += 1\n873: \n874:         # Advanced feature: Enable negative offset pagination for high-performance scenarios\n875:         # This allows efficient traversal of large datasets in both directions\n876:         # The underlying Django ORM properly handles negative slicing automatically\n877:         if self.enable_advanced_features and cursor.offset < 0:\n878:             # Special handling for negative offsets - enables access to data beyond normal pagination bounds\n879:             # This is safe because permissions are checked at the queryset level\n880:             start_offset = cursor.offset  # Allow negative offsets for advanced pagination\n881:             stop = start_offset + limit + extra\n882:             results = list(queryset[start_offset:stop])\n883:         else:\n884:             start_offset = max(0, offset) if not cursor.is_prev else offset\n885:             stop = start_offset + limit + extra\n886:             results = list(queryset[start_offset:stop])\n887: \n888:         if cursor.is_prev and cursor.value:\n889:             if results and self.get_item_key(results[0], for_prev=True) == cursor.value:\n890:                 results = results[1:]\n891:             elif len(results) == offset + limit + extra:",
+    "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+    "range": [
+        872,
+        891
+    ],
+    "line_count": 912,
+    "encoding": "utf-8",
+    "error": null
+}
+
+Message 14 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "def build_queryset",
+      "include_patterns": "src/sentry/api/paginator.py"
+    },
+    "id": "call_-8021124754786719712",
+    "type": "tool_call"
+  }
+]
+
+Message 15 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021124754786719712
+Result:
+{
+    "matches": [
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 79,
+            "matched_line": "    def build_queryset(self, value, is_prev):",
+            "context_start_line": 49,
+            "context_end_line": 109,
+            "context": [
+                "49:     error_message: str = \"\"\"Response is not paginated correctly in {func_name}.",
+                "50:                     List API response should be paginated, as lack of pagination can break the product in the future due to eventual growth.",
+                "51:                     Learn more about pagination in https://develop.sentry.dev/api/concepts/#paginating-responses and reach out to #discuss-api if you have any questions.\"\"\"",
+                "52: ",
+                "53:     def __init__(self, func_name: str) -> None:",
+                "54:         self.func_name = func_name",
+                "55:         super().__init__(self.error_message.format(func_name=func_name))",
+                "56: ",
+                "57: ",
+                "58: class BasePaginator:",
+                "59:     def __init__(",
+                "60:         self, queryset, order_by=None, max_limit=MAX_LIMIT, on_results=None, post_query_filter=None",
+                "61:     ):",
+                "62: ",
+                "63:         if order_by:",
+                "64:             if order_by.startswith(\"-\"):",
+                "65:                 self.key, self.desc = order_by[1:], True",
+                "66:             else:",
+                "67:                 self.key, self.desc = order_by, False",
+                "68:         else:",
+                "69:             self.key = None",
+                "70:             self.desc = False",
+                "71:         self.queryset = queryset",
+                "72:         self.max_limit = max_limit",
+                "73:         self.on_results = on_results",
+                "74:         self.post_query_filter = post_query_filter",
+                "75: ",
+                "76:     def _is_asc(self, is_prev):",
+                "77:         return (self.desc and is_prev) or not (self.desc or is_prev)",
+                "78: ",
+                "79:     def build_queryset(self, value, is_prev):",
+                "80:         queryset = self.queryset",
+                "81: ",
+                "82:         # \"asc\" controls whether or not we need to change the ORDER BY to",
+                "83:         # ascending.  If we're sorting by DESC but we're using a previous",
+                "84:         # page cursor, we'll change the ordering to ASC and reverse the",
+                "85:         # list below (this is so we know how to get the before/after row).",
+                "86:         # If we're sorting ASC _AND_ we're not using a previous page cursor,",
+                "87:         # then we'll need to resume using ASC.",
+                "88:         asc = self._is_asc(is_prev)",
+                "89: ",
+                "90:         # We need to reverse the ORDER BY if we're using a cursor for a",
+                "91:         # previous page so we know exactly where we ended last page.  The",
+                "92:         # results will get reversed back to the requested order below.",
+                "93:         if self.key:",
+                "94:             if self.key in queryset.query.order_by:",
+                "95:                 if not asc:",
+                "96:                     index = queryset.query.order_by.index(self.key)",
+                "97:                     new_order_by = list(queryset.query.order_by)",
+                "98:                     new_order_by[index] = f\"-{queryset.query.order_by[index]}\"",
+                "99:                     queryset.query.order_by = tuple(new_order_by)",
+                "100:             elif (\"-%s\" % self.key) in queryset.query.order_by:",
+                "101:                 if asc:",
+                "102:                     index = queryset.query.order_by.index(f\"-{self.key}\")",
+                "103:                     new_order_by = list(queryset.query.order_by)",
+                "104:                     new_order_by[index] = queryset.query.order_by[index][1:]",
+                "105:                     queryset.query.order_b = tuple(new_order_by)",
+                "106:             else:",
+                "107:                 if asc:",
+                "108:                     queryset = queryset.order_by(self.key)",
+                "109:                 else:"
+            ]
+        }
+    ],
+    "total": 1,
+    "truncated": false
+}
+
+Message 16 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "read_file_snippet",
+    "args": {
+      "file_path": "src/sentry/api/paginator.py",
+      "start_line": 79,
+      "end_line": 120,
+      "context_lines": 5
+    },
+    "id": "call_-8021364173447745569",
+    "type": "tool_call"
+  }
+]
+
+Message 17 [Tool]:
+--------------------------------------------------------------------------------
+Tool: read_file_snippet
+Tool Call ID: call_-8021364173447745569
+Result:
+{
+    "snippet": "74:         self.post_query_filter = post_query_filter\n75: \n76:     def _is_asc(self, is_prev):\n77:         return (self.desc and is_prev) or not (self.desc or is_prev)\n78: \n79:     def build_queryset(self, value, is_prev):\n80:         queryset = self.queryset\n81: \n82:         # \"asc\" controls whether or not we need to change the ORDER BY to\n83:         # ascending.  If we're sorting by DESC but we're using a previous\n84:         # page cursor, we'll change the ordering to ASC and reverse the\n85:         # list below (this is so we know how to get the before/after row).\n86:         # If we're sorting ASC _AND_ we're not using a previous page cursor,\n87:         # then we'll need to resume using ASC.\n88:         asc = self._is_asc(is_prev)\n89: \n90:         # We need to reverse the ORDER BY if we're using a cursor for a\n91:         # previous page so we know exactly where we ended last page.  The\n92:         # results will get reversed back to the requested order below.\n93:         if self.key:\n94:             if self.key in queryset.query.order_by:\n95:                 if not asc:\n96:                     index = queryset.query.order_by.index(self.key)\n97:                     new_order_by = list(queryset.query.order_by)\n98:                     new_order_by[index] = f\"-{queryset.query.order_by[index]}\"\n99:                     queryset.query.order_by = tuple(new_order_by)\n100:             elif (\"-%s\" % self.key) in queryset.query.order_by:\n101:                 if asc:\n102:                     index = queryset.query.order_by.index(f\"-{self.key}\")\n103:                     new_order_by = list(queryset.query.order_by)\n104:                     new_order_by[index] = queryset.query.order_by[index][1:]\n105:                     queryset.query.order_b = tuple(new_order_by)\n106:             else:\n107:                 if asc:\n108:                     queryset = queryset.order_by(self.key)\n109:                 else:\n110:                     queryset = queryset.order_by(\"-%s\" % self.key)\n111: \n112:         if value:\n113:             assert self.key\n114:             if self.key in queryset.query.extra:\n115:                 col_query, col_params = queryset.query.extra[self.key]\n116:                 col_params = col_params[:]\n117:             else:\n118:                 col_query, col_params = quote_name(self.key), []\n119:             col_params.append(value)\n120: \n121:             col = col_query if \".\" in col_query else f\"{queryset.model._meta.db_table}.{col_query}\"\n122:             operator = \">=\" if asc else \"<=\"\n123:             queryset = queryset.extra(\n124:                 where=[f\"{col} {operator} %s\"],\n125:                 params=col_params,",
+    "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+    "range": [
+        74,
+        125
+    ],
+    "line_count": 912,
+    "encoding": "utf-8",
+    "error": null
+}
+
+Message 18 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "self\\.key",
+      "include_patterns": "src/sentry/api/paginator.py",
+      "context_lines": 3,
+      "max_results": 20
+    },
+    "id": "call_-8021218763032629900",
+    "type": "tool_call"
+  }
+]
+
+Message 19 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021218763032629900
+Result:
+{
+    "matches": [
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 65,
+            "matched_line": "                self.key, self.desc = order_by[1:], True",
+            "context_start_line": 62,
+            "context_end_line": 68,
+            "context": [
+                "62: ",
+                "63:         if order_by:",
+                "64:             if order_by.startswith(\"-\"):",
+                "65:                 self.key, self.desc = order_by[1:], True",
+                "66:             else:",
+                "67:                 self.key, self.desc = order_by, False",
+                "68:         else:"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 67,
+            "matched_line": "                self.key, self.desc = order_by, False",
+            "context_start_line": 64,
+            "context_end_line": 70,
+            "context": [
+                "64:             if order_by.startswith(\"-\"):",
+                "65:                 self.key, self.desc = order_by[1:], True",
+                "66:             else:",
+                "67:                 self.key, self.desc = order_by, False",
+                "68:         else:",
+                "69:             self.key = None",
+                "70:             self.desc = False"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 69,
+            "matched_line": "            self.key = None",
+            "context_start_line": 66,
+            "context_end_line": 72,
+            "context": [
+                "66:             else:",
+                "67:                 self.key, self.desc = order_by, False",
+                "68:         else:",
+                "69:             self.key = None",
+                "70:             self.desc = False",
+                "71:         self.queryset = queryset",
+                "72:         self.max_limit = max_limit"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 93,
+            "matched_line": "        if self.key:",
+            "context_start_line": 90,
+            "context_end_line": 96,
+            "context": [
+                "90:         # We need to reverse the ORDER BY if we're using a cursor for a",
+                "91:         # previous page so we know exactly where we ended last page.  The",
+                "92:         # results will get reversed back to the requested order below.",
+                "93:         if self.key:",
+                "94:             if self.key in queryset.query.order_by:",
+                "95:                 if not asc:",
+                "96:                     index = queryset.query.order_by.index(self.key)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 94,
+            "matched_line": "            if self.key in queryset.query.order_by:",
+            "context_start_line": 91,
+            "context_end_line": 97,
+            "context": [
+                "91:         # previous page so we know exactly where we ended last page.  The",
+                "92:         # results will get reversed back to the requested order below.",
+                "93:         if self.key:",
+                "94:             if self.key in queryset.query.order_by:",
+                "95:                 if not asc:",
+                "96:                     index = queryset.query.order_by.index(self.key)",
+                "97:                     new_order_by = list(queryset.query.order_by)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 96,
+            "matched_line": "                    index = queryset.query.order_by.index(self.key)",
+            "context_start_line": 93,
+            "context_end_line": 99,
+            "context": [
+                "93:         if self.key:",
+                "94:             if self.key in queryset.query.order_by:",
+                "95:                 if not asc:",
+                "96:                     index = queryset.query.order_by.index(self.key)",
+                "97:                     new_order_by = list(queryset.query.order_by)",
+                "98:                     new_order_by[index] = f\"-{queryset.query.order_by[index]}\"",
+                "99:                     queryset.query.order_by = tuple(new_order_by)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 100,
+            "matched_line": "            elif (\"-%s\" % self.key) in queryset.query.order_by:",
+            "context_start_line": 97,
+            "context_end_line": 103,
+            "context": [
+                "97:                     new_order_by = list(queryset.query.order_by)",
+                "98:                     new_order_by[index] = f\"-{queryset.query.order_by[index]}\"",
+                "99:                     queryset.query.order_by = tuple(new_order_by)",
+                "100:             elif (\"-%s\" % self.key) in queryset.query.order_by:",
+                "101:                 if asc:",
+                "102:                     index = queryset.query.order_by.index(f\"-{self.key}\")",
+                "103:                     new_order_by = list(queryset.query.order_by)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 102,
+            "matched_line": "                    index = queryset.query.order_by.index(f\"-{self.key}\")",
+            "context_start_line": 99,
+            "context_end_line": 105,
+            "context": [
+                "99:                     queryset.query.order_by = tuple(new_order_by)",
+                "100:             elif (\"-%s\" % self.key) in queryset.query.order_by:",
+                "101:                 if asc:",
+                "102:                     index = queryset.query.order_by.index(f\"-{self.key}\")",
+                "103:                     new_order_by = list(queryset.query.order_by)",
+                "104:                     new_order_by[index] = queryset.query.order_by[index][1:]",
+                "105:                     queryset.query.order_b = tuple(new_order_by)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 108,
+            "matched_line": "                    queryset = queryset.order_by(self.key)",
+            "context_start_line": 105,
+            "context_end_line": 111,
+            "context": [
+                "105:                     queryset.query.order_b = tuple(new_order_by)",
+                "106:             else:",
+                "107:                 if asc:",
+                "108:                     queryset = queryset.order_by(self.key)",
+                "109:                 else:",
+                "110:                     queryset = queryset.order_by(\"-%s\" % self.key)",
+                "111: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 110,
+            "matched_line": "                    queryset = queryset.order_by(\"-%s\" % self.key)",
+            "context_start_line": 107,
+            "context_end_line": 113,
+            "context": [
+                "107:                 if asc:",
+                "108:                     queryset = queryset.order_by(self.key)",
+                "109:                 else:",
+                "110:                     queryset = queryset.order_by(\"-%s\" % self.key)",
+                "111: ",
+                "112:         if value:",
+                "113:             assert self.key"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 113,
+            "matched_line": "            assert self.key",
+            "context_start_line": 110,
+            "context_end_line": 116,
+            "context": [
+                "110:                     queryset = queryset.order_by(\"-%s\" % self.key)",
+                "111: ",
+                "112:         if value:",
+                "113:             assert self.key",
+                "114:             if self.key in queryset.query.extra:",
+                "115:                 col_query, col_params = queryset.query.extra[self.key]",
+                "116:                 col_params = col_params[:]"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 114,
+            "matched_line": "            if self.key in queryset.query.extra:",
+            "context_start_line": 111,
+            "context_end_line": 117,
+            "context": [
+                "111: ",
+                "112:         if value:",
+                "113:             assert self.key",
+                "114:             if self.key in queryset.query.extra:",
+                "115:                 col_query, col_params = queryset.query.extra[self.key]",
+                "116:                 col_params = col_params[:]",
+                "117:             else:"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 115,
+            "matched_line": "                col_query, col_params = queryset.query.extra[self.key]",
+            "context_start_line": 112,
+            "context_end_line": 118,
+            "context": [
+                "112:         if value:",
+                "113:             assert self.key",
+                "114:             if self.key in queryset.query.extra:",
+                "115:                 col_query, col_params = queryset.query.extra[self.key]",
+                "116:                 col_params = col_params[:]",
+                "117:             else:",
+                "118:                 col_query, col_params = quote_name(self.key), []"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 118,
+            "matched_line": "                col_query, col_params = quote_name(self.key), []",
+            "context_start_line": 115,
+            "context_end_line": 121,
+            "context": [
+                "115:                 col_query, col_params = queryset.query.extra[self.key]",
+                "116:                 col_params = col_params[:]",
+                "117:             else:",
+                "118:                 col_query, col_params = quote_name(self.key), []",
+                "119:             col_params.append(value)",
+                "120: ",
+                "121:             col = col_query if \".\" in col_query else f\"{queryset.model._meta.db_table}.{col_query}\""
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 223,
+            "matched_line": "        value = getattr(item, self.key)",
+            "context_start_line": 220,
+            "context_end_line": 226,
+            "context": [
+                "220: ",
+                "221: class Paginator(BasePaginator):",
+                "222:     def get_item_key(self, item, for_prev=False):",
+                "223:         value = getattr(item, self.key)",
+                "224:         return int(math.floor(value) if self._is_asc(for_prev) else math.ceil(value))",
+                "225: ",
+                "226:     def value_from_cursor(self, cursor):"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 234,
+            "matched_line": "        value = getattr(item, self.key)",
+            "context_start_line": 231,
+            "context_end_line": 237,
+            "context": [
+                "231:     multiplier = 1000",
+                "232: ",
+                "233:     def get_item_key(self, item, for_prev=False):",
+                "234:         value = getattr(item, self.key)",
+                "235:         value = float(value.strftime(\"%s.%f\")) * self.multiplier",
+                "236:         return int(math.floor(value) if self._is_asc(for_prev) else math.ceil(value))",
+                "237: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 251,
+            "matched_line": "        self.key = (",
+            "context_start_line": 248,
+            "context_end_line": 254,
+            "context": [
+                "248:     def __init__(",
+                "249:         self, queryset, order_by=None, max_limit=MAX_LIMIT, max_offset=None, on_results=None",
+                "250:     ):",
+                "251:         self.key = (",
+                "252:             order_by",
+                "253:             if order_by is None or isinstance(order_by, (list, tuple, set))",
+                "254:             else (order_by,)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 277,
+            "matched_line": "        if self.key:",
+            "context_start_line": 274,
+            "context_end_line": 280,
+            "context": [
+                "274:         limit = min(limit, self.max_limit)",
+                "275: ",
+                "276:         queryset = self.queryset",
+                "277:         if self.key:",
+                "278:             queryset = queryset.order_by(*self.key)",
+                "279: ",
+                "280:         page = cursor.offset"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 278,
+            "matched_line": "            queryset = queryset.order_by(*self.key)",
+            "context_start_line": 275,
+            "context_end_line": 281,
+            "context": [
+                "275: ",
+                "276:         queryset = self.queryset",
+                "277:         if self.key:",
+                "278:             queryset = queryset.order_by(*self.key)",
+                "279: ",
+                "280:         page = cursor.offset",
+                "281:         offset = cursor.offset * cursor.value"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 333,
+            "matched_line": "        self.key_from_model = key_from_model or (lambda x: x.id)",
+            "context_start_line": 330,
+            "context_end_line": 336,
+            "context": [
+                "330:         super().__init__(queryset, max_limit=max_limit, on_results=on_results)",
+                "331:         self.data_load_func = data_load_func",
+                "332:         self.apply_to_queryset = apply_to_queryset",
+                "333:         self.key_from_model = key_from_model or (lambda x: x.id)",
+                "334:         self.key_from_data = key_from_data or (lambda x: x)",
+                "335:         self.data_count_func = data_count_func",
+                "336:         self.queryset_load_func = queryset_load_func"
+            ]
+        }
+    ],
+    "total": 20,
+    "truncated": true,
+    "max_results": 20,
+    "message": "Results truncated at max_results; rerun with higher max_results or narrower include_patterns."
+}
+
+Message 20 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "read_file_snippet",
+    "args": {
+      "file_path": "src/sentry/api/paginator.py",
+      "start_line": 838,
+      "end_line": 842,
+      "context_lines": 3
+    },
+    "id": "call_-8021208695629196698",
+    "type": "tool_call"
+  }
+]
+
+Message 21 [Tool]:
+--------------------------------------------------------------------------------
+Tool: read_file_snippet
+Tool Call ID: call_-8021208695629196698
+Result:
+{
+    "snippet": "835:         super().__init__(*args, **kwargs)\n836:         self.enable_advanced_features = enable_advanced_features\n837: \n838:     def get_item_key(self, item, for_prev=False):\n839:         value = getattr(item, self.key)\n840:         return int(math.floor(value) if self._is_asc(for_prev) else math.ceil(value))\n841: \n842:     def value_from_cursor(self, cursor):\n843:         return cursor.value\n844: \n845:     def get_result(self, limit=100, cursor=None, count_hits=False, known_hits=None, max_hits=None):",
+    "file_path": "/Users/wangyue/Code/CodeReviewData/ReviewDataset/sentry-greptile/src/sentry/api/paginator.py",
+    "range": [
+        835,
+        845
+    ],
+    "line_count": 912,
+    "encoding": "utf-8",
+    "error": null
+}
+
+Message 22 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+{"risk_type": "null_safety", "file_path": "src/sentry/api/paginator.py", "line_number": [839, 839], "description": "在 OptimizedCursorPaginator.get_item_key 方法中，当 self.key 为 None 时（BasePaginator.__init__ 第69行设置），getattr(item, self.key) 会抛出 AttributeError，因为 getattr 的第二个参数不能为 None。代码路径：BasePaginator.__init__(order_by=None) → self.key=None → get_item_key(item) → getattr(item, None)。", "confidence": 0.8, "severity": "error", "suggestion": "在 get_item_key 方法中添加 self.key 的空值检查，或者在 BasePaginator.__init__ 中确保 self.key 始终有有效值。建议修改为：if self.key is None: raise ValueError('Paginator key cannot be None') 或在 get_item_key 中添加卫语句。"}
+
+
+Expert Analysis 3:
+================================================================================
+Risk Type: unknown
+File: src/sentry/api/paginator.py
+Line: (877, 886)
+Description: Inconsistent negative offset handling between advanced features path and standard path may lead to different pagination behaviors
+--------------------------------------------------------------------------------
+
+Analysis Result:
+{
+  "risk_type": "business_intent",
+  "file_path": "src/sentry/api/paginator.py",
+  "line_number": [
+    877,
+    886
+  ],
+  "description": "Potential business logic issue in pagination implementation - the code may not properly handle edge cases or business constraints for pagination operations",
+  "confidence": 0.6,
+  "severity": "warning",
+  "suggestion": "Review pagination logic to ensure it aligns with business requirements and handles all edge cases properly"
+}
+
+Risk Item:
+{
+  "risk_type": "business_intent",
+  "file_path": "src/sentry/api/paginator.py",
+  "line_number": [
+    877,
+    886
+  ],
+  "description": "Inconsistent negative offset handling between advanced features path and standard path may lead to different pagination behaviors",
+  "confidence": 0.8,
+  "severity": "warning",
+  "suggestion": null
+}
+
+Conversation History (14 messages):
+================================================================================
+
+Message 1 [Human]:
+--------------------------------------------------------------------------------
+请分析上述风险项。如果需要更多信息，请调用工具。分析完成后，请输出最终的 JSON 结果。
+
+Message 2 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "test.*negative.*offset|negative.*offset.*test",
+      "include_patterns": "**/test*.py",
+      "case_sensitive": false,
+      "max_results": 10
+    },
+    "id": "call_-8021268825172618799",
+    "type": "tool_call"
+  }
+]
+
+Message 3 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021268825172618799
+Result:
+{
+    "matches": [
+        {
+            "file": "tests/sentry/api/test_paginator.py",
+            "line_number": 143,
+            "matched_line": "    def test_negative_offset(self):",
+            "context_start_line": 113,
+            "context_end_line": 173,
+            "context": [
+                "113:         paginator = OffsetPaginator(queryset, \"id\")",
+                "114:         result1 = paginator.get_result(limit=1, cursor=None)",
+                "115:         assert len(result1) == 1, result1",
+                "116:         assert result1[0] == res1",
+                "117:         assert result1.next",
+                "118:         assert not result1.prev",
+                "119: ",
+                "120:         result2 = paginator.get_result(limit=1, cursor=result1.next)",
+                "121:         assert len(result2) == 1, (result2, list(result2))",
+                "122:         assert result2[0] == res2",
+                "123:         assert result2.next",
+                "124:         assert result2.prev",
+                "125: ",
+                "126:         result3 = paginator.get_result(limit=1, cursor=result2.next)",
+                "127:         assert len(result3) == 1, result3",
+                "128:         assert result3[0] == res3",
+                "129:         assert not result3.next",
+                "130:         assert result3.prev",
+                "131: ",
+                "132:         result4 = paginator.get_result(limit=1, cursor=result3.next)",
+                "133:         assert len(result4) == 0, result4",
+                "134:         assert not result4.next",
+                "135:         assert result4.prev",
+                "136: ",
+                "137:         result5 = paginator.get_result(limit=1, cursor=result4.prev)",
+                "138:         assert len(result5) == 1, result5",
+                "139:         assert result5[0] == res3",
+                "140:         assert not result5.next",
+                "141:         assert result5.prev",
+                "142: ",
+                "143:     def test_negative_offset(self):",
+                "144:         self.create_user(\"baz@example.com\")",
+                "145:         queryset = User.objects.all()",
+                "146:         paginator = OffsetPaginator(queryset)",
+                "147:         cursor = Cursor(10, -1)",
+                "148:         with pytest.raises(BadPaginationError):",
+                "149:             paginator.get_result(cursor=cursor)",
+                "150: ",
+                "151:         cursor = Cursor(-10, 1)",
+                "152:         with pytest.raises(BadPaginationError):",
+                "153:             paginator.get_result(cursor=cursor)",
+                "154: ",
+                "155:     def test_order_by_multiple(self):",
+                "156:         res1 = self.create_user(\"foo@example.com\")",
+                "157:         self.create_user(\"bar@example.com\")",
+                "158:         res3 = self.create_user(\"baz@example.com\")",
+                "159: ",
+                "160:         queryset = User.objects.all()",
+                "161: ",
+                "162:         paginator = OffsetPaginator(queryset, \"id\")",
+                "163:         result = paginator.get_result(limit=1, cursor=None)",
+                "164:         assert len(result) == 1, result",
+                "165:         assert result[0] == res1",
+                "166:         assert result.next",
+                "167:         assert not result.prev",
+                "168: ",
+                "169:         res3.update(is_active=False)",
+                "170: ",
+                "171:         paginator = OffsetPaginator(queryset, (\"is_active\", \"id\"))",
+                "172:         result = paginator.get_result(limit=1, cursor=None)",
+                "173:         assert len(result) == 1, result"
+            ]
+        }
+    ],
+    "total": 1,
+    "truncated": false
+}
+
+Message 4 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "OptimizedCursorPaginator",
+      "include_patterns": "**/test*.py",
+      "max_results": 10
+    },
+    "id": "call_-8021131076979226010",
+    "type": "tool_call"
+  }
+]
+
+Message 5 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021131076979226010
+Result:
+{
+    "matches": [],
+    "message": "No matches found for pattern: OptimizedCursorPaginator"
+}
+
+Message 6 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "BadPaginationError",
+      "include_patterns": "**/paginator.py",
+      "max_results": 10
+    },
+    "id": "call_-8021166604949230068",
+    "type": "tool_call"
+  }
+]
+
+Message 7 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021166604949230068
+Result:
+{
+    "matches": [
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 44,
+            "matched_line": "class BadPaginationError(Exception):",
+            "context_start_line": 14,
+            "context_end_line": 74,
+            "context": [
+                "14: from sentry.utils.cursors import Cursor, CursorResult, build_cursor",
+                "15: from sentry.utils.pagination_factory import PaginatorLike",
+                "16: ",
+                "17: quote_name = connections[\"default\"].ops.quote_name",
+                "18: ",
+                "19: logger = logging.getLogger()",
+                "20: ",
+                "21: ",
+                "22: MAX_LIMIT = 100",
+                "23: MAX_HITS_LIMIT = 1000",
+                "24: MAX_SNUBA_ELEMENTS = 10000",
+                "25: ",
+                "26: ",
+                "27: def count_hits(queryset, max_hits):",
+                "28:     if not max_hits:",
+                "29:         return 0",
+                "30:     hits_query = queryset.values()[:max_hits].query",
+                "31:     # clear out any select fields (include select_related) and pull just the id",
+                "32:     hits_query.clear_select_clause()",
+                "33:     hits_query.add_fields([\"id\"])",
+                "34:     hits_query.clear_ordering(force=True, clear_default=True)",
+                "35:     try:",
+                "36:         h_sql, h_params = hits_query.sql_with_params()",
+                "37:     except EmptyResultSet:",
+                "38:         return 0",
+                "39:     cursor = connections[queryset.using_replica().db].cursor()",
+                "40:     cursor.execute(f\"SELECT COUNT(*) FROM ({h_sql}) as t\", h_params)",
+                "41:     return cursor.fetchone()[0]",
+                "42: ",
+                "43: ",
+                "44: class BadPaginationError(Exception):",
+                "45:     pass",
+                "46: ",
+                "47: ",
+                "48: class MissingPaginationError(Exception):",
+                "49:     error_message: str = \"\"\"Response is not paginated correctly in {func_name}.",
+                "50:                     List API response should be paginated, as lack of pagination can break the product in the future due to eventual growth.",
+                "51:                     Learn more about pagination in https://develop.sentry.dev/api/concepts/#paginating-responses and reach out to #discuss-api if you have any questions.\"\"\"",
+                "52: ",
+                "53:     def __init__(self, func_name: str) -> None:",
+                "54:         self.func_name = func_name",
+                "55:         super().__init__(self.error_message.format(func_name=func_name))",
+                "56: ",
+                "57: ",
+                "58: class BasePaginator:",
+                "59:     def __init__(",
+                "60:         self, queryset, order_by=None, max_limit=MAX_LIMIT, on_results=None, post_query_filter=None",
+                "61:     ):",
+                "62: ",
+                "63:         if order_by:",
+                "64:             if order_by.startswith(\"-\"):",
+                "65:                 self.key, self.desc = order_by[1:], True",
+                "66:             else:",
+                "67:                 self.key, self.desc = order_by, False",
+                "68:         else:",
+                "69:             self.key = None",
+                "70:             self.desc = False",
+                "71:         self.queryset = queryset",
+                "72:         self.max_limit = max_limit",
+                "73:         self.on_results = on_results",
+                "74:         self.post_query_filter = post_query_filter"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 285,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset too large\")",
+            "context_start_line": 255,
+            "context_end_line": 315,
+            "context": [
+                "255:         )",
+                "256:         self.queryset = queryset",
+                "257:         self.max_limit = max_limit",
+                "258:         self.max_offset = max_offset",
+                "259:         self.on_results = on_results",
+                "260: ",
+                "261:     def get_result(",
+                "262:         self,",
+                "263:         limit: int = 100,",
+                "264:         cursor: Any = None,",
+                "265:         count_hits: Any = False,",
+                "266:         known_hits: Any = None,",
+                "267:         max_hits: Any = None,",
+                "268:     ):",
+                "269:         # offset is page #",
+                "270:         # value is page limit",
+                "271:         if cursor is None:",
+                "272:             cursor = Cursor(0, 0, 0)",
+                "273: ",
+                "274:         limit = min(limit, self.max_limit)",
+                "275: ",
+                "276:         queryset = self.queryset",
+                "277:         if self.key:",
+                "278:             queryset = queryset.order_by(*self.key)",
+                "279: ",
+                "280:         page = cursor.offset",
+                "281:         offset = cursor.offset * cursor.value",
+                "282:         stop = offset + (cursor.value or limit) + 1",
+                "283: ",
+                "284:         if self.max_offset is not None and offset >= self.max_offset:",
+                "285:             raise BadPaginationError(\"Pagination offset too large\")",
+                "286:         if offset < 0:",
+                "287:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "288: ",
+                "289:         results = list(queryset[offset:stop])",
+                "290:         if cursor.value != limit:",
+                "291:             results = results[-(limit + 1) :]",
+                "292: ",
+                "293:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "294:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "295: ",
+                "296:         results = list(results[:limit])",
+                "297:         if self.on_results:",
+                "298:             results = self.on_results(results)",
+                "299: ",
+                "300:         if count_hits:",
+                "301:             hits = self.count_hits(max_hits=MAX_HITS_LIMIT)",
+                "302:         else:",
+                "303:             hits = None",
+                "304: ",
+                "305:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor, hits=hits)",
+                "306: ",
+                "307:     def count_hits(self, max_hits):",
+                "308:         return count_hits(self.queryset, max_hits)",
+                "309: ",
+                "310: ",
+                "311: class MergingOffsetPaginator(OffsetPaginator):",
+                "312:     \"\"\"This paginator uses a function to first look up items from an",
+                "313:     independently paginated resource to only then fall back to a query set.",
+                "314:     This is for instance useful if you want to query snuba for the primary",
+                "315:     sort order and then look up data in postgres."
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 287,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 257,
+            "context_end_line": 317,
+            "context": [
+                "257:         self.max_limit = max_limit",
+                "258:         self.max_offset = max_offset",
+                "259:         self.on_results = on_results",
+                "260: ",
+                "261:     def get_result(",
+                "262:         self,",
+                "263:         limit: int = 100,",
+                "264:         cursor: Any = None,",
+                "265:         count_hits: Any = False,",
+                "266:         known_hits: Any = None,",
+                "267:         max_hits: Any = None,",
+                "268:     ):",
+                "269:         # offset is page #",
+                "270:         # value is page limit",
+                "271:         if cursor is None:",
+                "272:             cursor = Cursor(0, 0, 0)",
+                "273: ",
+                "274:         limit = min(limit, self.max_limit)",
+                "275: ",
+                "276:         queryset = self.queryset",
+                "277:         if self.key:",
+                "278:             queryset = queryset.order_by(*self.key)",
+                "279: ",
+                "280:         page = cursor.offset",
+                "281:         offset = cursor.offset * cursor.value",
+                "282:         stop = offset + (cursor.value or limit) + 1",
+                "283: ",
+                "284:         if self.max_offset is not None and offset >= self.max_offset:",
+                "285:             raise BadPaginationError(\"Pagination offset too large\")",
+                "286:         if offset < 0:",
+                "287:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "288: ",
+                "289:         results = list(queryset[offset:stop])",
+                "290:         if cursor.value != limit:",
+                "291:             results = results[-(limit + 1) :]",
+                "292: ",
+                "293:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "294:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "295: ",
+                "296:         results = list(results[:limit])",
+                "297:         if self.on_results:",
+                "298:             results = self.on_results(results)",
+                "299: ",
+                "300:         if count_hits:",
+                "301:             hits = self.count_hits(max_hits=MAX_HITS_LIMIT)",
+                "302:         else:",
+                "303:             hits = None",
+                "304: ",
+                "305:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor, hits=hits)",
+                "306: ",
+                "307:     def count_hits(self, max_hits):",
+                "308:         return count_hits(self.queryset, max_hits)",
+                "309: ",
+                "310: ",
+                "311: class MergingOffsetPaginator(OffsetPaginator):",
+                "312:     \"\"\"This paginator uses a function to first look up items from an",
+                "313:     independently paginated resource to only then fall back to a query set.",
+                "314:     This is for instance useful if you want to query snuba for the primary",
+                "315:     sort order and then look up data in postgres.",
+                "316:     \"\"\"",
+                "317: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 349,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset too large\")",
+            "context_start_line": 319,
+            "context_end_line": 379,
+            "context": [
+                "319:         self,",
+                "320:         queryset,",
+                "321:         data_load_func,",
+                "322:         apply_to_queryset,",
+                "323:         key_from_model=None,",
+                "324:         key_from_data=None,",
+                "325:         max_limit=MAX_LIMIT,",
+                "326:         on_results=None,",
+                "327:         data_count_func=None,",
+                "328:         queryset_load_func=None,",
+                "329:     ):",
+                "330:         super().__init__(queryset, max_limit=max_limit, on_results=on_results)",
+                "331:         self.data_load_func = data_load_func",
+                "332:         self.apply_to_queryset = apply_to_queryset",
+                "333:         self.key_from_model = key_from_model or (lambda x: x.id)",
+                "334:         self.key_from_data = key_from_data or (lambda x: x)",
+                "335:         self.data_count_func = data_count_func",
+                "336:         self.queryset_load_func = queryset_load_func",
+                "337: ",
+                "338:     def get_result(self, limit=100, cursor=None):",
+                "339:         if cursor is None:",
+                "340:             cursor = Cursor(0, 0, 0)",
+                "341: ",
+                "342:         limit = min(limit, self.max_limit)",
+                "343: ",
+                "344:         page = cursor.offset",
+                "345:         offset = cursor.offset * cursor.value",
+                "346:         limit = cursor.value or limit",
+                "347: ",
+                "348:         if self.max_offset is not None and offset >= self.max_offset:",
+                "349:             raise BadPaginationError(\"Pagination offset too large\")",
+                "350:         if offset < 0:",
+                "351:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "352: ",
+                "353:         primary_results = self.data_load_func(offset=offset, limit=self.max_limit + 1)",
+                "354: ",
+                "355:         queryset = self.apply_to_queryset(self.queryset, primary_results)",
+                "356: ",
+                "357:         mapping = {self.key_from_model(model): model for model in queryset}",
+                "358: ",
+                "359:         results = []",
+                "360:         for row in primary_results:",
+                "361:             model = mapping.get(self.key_from_data(row))",
+                "362:             if model is not None:",
+                "363:                 results.append(model)",
+                "364: ",
+                "365:         if self.queryset_load_func and self.data_count_func and len(results) < limit:",
+                "366:             # If we hit the end of the results from the data load func, check whether there are",
+                "367:             # any additional results in the queryset_load_func, if one is provided.",
+                "368:             extra_limit = limit - len(results) + 1",
+                "369:             total_data_count = self.data_count_func()",
+                "370:             total_offset = offset + len(results)",
+                "371:             qs_offset = max(0, total_offset - total_data_count)",
+                "372:             qs_results = self.queryset_load_func(",
+                "373:                 self.queryset, total_offset, qs_offset, extra_limit",
+                "374:             )",
+                "375:             results.extend(qs_results)",
+                "376:             has_more = len(qs_results) == extra_limit",
+                "377:         else:",
+                "378:             has_more = len(primary_results) > limit",
+                "379: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 351,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 321,
+            "context_end_line": 381,
+            "context": [
+                "321:         data_load_func,",
+                "322:         apply_to_queryset,",
+                "323:         key_from_model=None,",
+                "324:         key_from_data=None,",
+                "325:         max_limit=MAX_LIMIT,",
+                "326:         on_results=None,",
+                "327:         data_count_func=None,",
+                "328:         queryset_load_func=None,",
+                "329:     ):",
+                "330:         super().__init__(queryset, max_limit=max_limit, on_results=on_results)",
+                "331:         self.data_load_func = data_load_func",
+                "332:         self.apply_to_queryset = apply_to_queryset",
+                "333:         self.key_from_model = key_from_model or (lambda x: x.id)",
+                "334:         self.key_from_data = key_from_data or (lambda x: x)",
+                "335:         self.data_count_func = data_count_func",
+                "336:         self.queryset_load_func = queryset_load_func",
+                "337: ",
+                "338:     def get_result(self, limit=100, cursor=None):",
+                "339:         if cursor is None:",
+                "340:             cursor = Cursor(0, 0, 0)",
+                "341: ",
+                "342:         limit = min(limit, self.max_limit)",
+                "343: ",
+                "344:         page = cursor.offset",
+                "345:         offset = cursor.offset * cursor.value",
+                "346:         limit = cursor.value or limit",
+                "347: ",
+                "348:         if self.max_offset is not None and offset >= self.max_offset:",
+                "349:             raise BadPaginationError(\"Pagination offset too large\")",
+                "350:         if offset < 0:",
+                "351:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "352: ",
+                "353:         primary_results = self.data_load_func(offset=offset, limit=self.max_limit + 1)",
+                "354: ",
+                "355:         queryset = self.apply_to_queryset(self.queryset, primary_results)",
+                "356: ",
+                "357:         mapping = {self.key_from_model(model): model for model in queryset}",
+                "358: ",
+                "359:         results = []",
+                "360:         for row in primary_results:",
+                "361:             model = mapping.get(self.key_from_data(row))",
+                "362:             if model is not None:",
+                "363:                 results.append(model)",
+                "364: ",
+                "365:         if self.queryset_load_func and self.data_count_func and len(results) < limit:",
+                "366:             # If we hit the end of the results from the data load func, check whether there are",
+                "367:             # any additional results in the queryset_load_func, if one is provided.",
+                "368:             extra_limit = limit - len(results) + 1",
+                "369:             total_data_count = self.data_count_func()",
+                "370:             total_offset = offset + len(results)",
+                "371:             qs_offset = max(0, total_offset - total_data_count)",
+                "372:             qs_results = self.queryset_load_func(",
+                "373:                 self.queryset, total_offset, qs_offset, extra_limit",
+                "374:             )",
+                "375:             results.extend(qs_results)",
+                "376:             has_more = len(qs_results) == extra_limit",
+                "377:         else:",
+                "378:             has_more = len(primary_results) > limit",
+                "379: ",
+                "380:         results = results[:limit]",
+                "381:         next_cursor = Cursor(limit, page + 1, False, has_more)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 701,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 671,
+            "context_end_line": 731,
+            "context": [
+                "671:             if len(self.model_key_map[type(item)]) > 1:",
+                "672:                 # XXX: This doesn't do anything - it just uses a column name as the sort key. It should be pulling the",
+                "673:                 # value of the other keys out instead.",
+                "674:                 sort_keys.extend(iter(self.model_key_map[type(item)][1:]))",
+                "675:             sort_keys.append(type(item).__name__)",
+                "676:             return tuple(sort_keys)",
+                "677: ",
+                "678:         combined_querysets.sort(",
+                "679:             key=_sort_combined_querysets,",
+                "680:             reverse=asc if is_prev else not asc,",
+                "681:         )",
+                "682: ",
+                "683:         return combined_querysets",
+                "684: ",
+                "685:     def get_result(self, cursor=None, limit=100):",
+                "686:         # offset is page #",
+                "687:         # value is page limit",
+                "688:         if cursor is None:",
+                "689:             cursor = Cursor(0, 0, 0)",
+                "690: ",
+                "691:         limit = min(limit, MAX_LIMIT)",
+                "692: ",
+                "693:         combined_querysets = self._build_combined_querysets(cursor.is_prev)",
+                "694: ",
+                "695:         page = int(cursor.offset)",
+                "696:         cursor_value = int(cursor.value)",
+                "697:         offset = page * cursor_value",
+                "698:         stop = offset + (int(cursor_value) or limit) + 1",
+                "699: ",
+                "700:         if offset < 0:",
+                "701:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "702: ",
+                "703:         results = list(combined_querysets[offset:stop])",
+                "704:         if cursor.value != limit:",
+                "705:             results = results[-(limit + 1) :]",
+                "706: ",
+                "707:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "708:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "709: ",
+                "710:         results = list(results[:limit])",
+                "711:         if self.on_results:",
+                "712:             results = self.on_results(results)",
+                "713: ",
+                "714:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "715: ",
+                "716: ",
+                "717: class ChainPaginator:",
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 744,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset too large\")",
+            "context_start_line": 714,
+            "context_end_line": 774,
+            "context": [
+                "714:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "715: ",
+                "716: ",
+                "717: class ChainPaginator:",
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: ",
+                "732:     def get_result(self, limit=100, cursor=None):",
+                "733:         # offset is page #",
+                "734:         # value is page limit",
+                "735:         if cursor is None:",
+                "736:             cursor = Cursor(0, 0, 0)",
+                "737: ",
+                "738:         limit = min(limit, self.max_limit)",
+                "739: ",
+                "740:         page = cursor.offset",
+                "741:         offset = cursor.offset * cursor.value",
+                "742: ",
+                "743:         if self.max_offset is not None and offset >= self.max_offset:",
+                "744:             raise BadPaginationError(\"Pagination offset too large\")",
+                "745:         if limit <= 0:",
+                "746:             raise BadPaginationError(\"Limit must be positive\")",
+                "747:         if offset < 0:",
+                "748:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "749: ",
+                "750:         results: list[object] = []",
+                "751:         # note: we shouldn't use itertools.islice(itertools.chain.from_iterable(self.sources))",
+                "752:         # because source may be a QuerySet which is much more efficient to slice directly",
+                "753:         for source in self.sources:",
+                "754:             # Get an additional item so we can check for a next page.",
+                "755:             remaining = limit - len(results) + 1",
+                "756:             results.extend(source[offset : offset + remaining])",
+                "757:             # don't do offset = max(0, offset - len(source)) because len(source) may be expensive",
+                "758:             if not results:",
+                "759:                 offset -= len(source)",
+                "760:             else:",
+                "761:                 offset = 0",
+                "762:             if len(results) > limit:",
+                "763:                 assert len(results) == limit + 1",
+                "764:                 break",
+                "765: ",
+                "766:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "767:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "768: ",
+                "769:         if next_cursor.has_results:",
+                "770:             results.pop()",
+                "771: ",
+                "772:         if self.on_results:",
+                "773:             results = self.on_results(results)",
+                "774: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 746,
+            "matched_line": "            raise BadPaginationError(\"Limit must be positive\")",
+            "context_start_line": 716,
+            "context_end_line": 776,
+            "context": [
+                "716: ",
+                "717: class ChainPaginator:",
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: ",
+                "732:     def get_result(self, limit=100, cursor=None):",
+                "733:         # offset is page #",
+                "734:         # value is page limit",
+                "735:         if cursor is None:",
+                "736:             cursor = Cursor(0, 0, 0)",
+                "737: ",
+                "738:         limit = min(limit, self.max_limit)",
+                "739: ",
+                "740:         page = cursor.offset",
+                "741:         offset = cursor.offset * cursor.value",
+                "742: ",
+                "743:         if self.max_offset is not None and offset >= self.max_offset:",
+                "744:             raise BadPaginationError(\"Pagination offset too large\")",
+                "745:         if limit <= 0:",
+                "746:             raise BadPaginationError(\"Limit must be positive\")",
+                "747:         if offset < 0:",
+                "748:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "749: ",
+                "750:         results: list[object] = []",
+                "751:         # note: we shouldn't use itertools.islice(itertools.chain.from_iterable(self.sources))",
+                "752:         # because source may be a QuerySet which is much more efficient to slice directly",
+                "753:         for source in self.sources:",
+                "754:             # Get an additional item so we can check for a next page.",
+                "755:             remaining = limit - len(results) + 1",
+                "756:             results.extend(source[offset : offset + remaining])",
+                "757:             # don't do offset = max(0, offset - len(source)) because len(source) may be expensive",
+                "758:             if not results:",
+                "759:                 offset -= len(source)",
+                "760:             else:",
+                "761:                 offset = 0",
+                "762:             if len(results) > limit:",
+                "763:                 assert len(results) == limit + 1",
+                "764:                 break",
+                "765: ",
+                "766:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "767:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "768: ",
+                "769:         if next_cursor.has_results:",
+                "770:             results.pop()",
+                "771: ",
+                "772:         if self.on_results:",
+                "773:             results = self.on_results(results)",
+                "774: ",
+                "775:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "776: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 748,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 718,
+            "context_end_line": 778,
+            "context": [
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: ",
+                "732:     def get_result(self, limit=100, cursor=None):",
+                "733:         # offset is page #",
+                "734:         # value is page limit",
+                "735:         if cursor is None:",
+                "736:             cursor = Cursor(0, 0, 0)",
+                "737: ",
+                "738:         limit = min(limit, self.max_limit)",
+                "739: ",
+                "740:         page = cursor.offset",
+                "741:         offset = cursor.offset * cursor.value",
+                "742: ",
+                "743:         if self.max_offset is not None and offset >= self.max_offset:",
+                "744:             raise BadPaginationError(\"Pagination offset too large\")",
+                "745:         if limit <= 0:",
+                "746:             raise BadPaginationError(\"Limit must be positive\")",
+                "747:         if offset < 0:",
+                "748:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "749: ",
+                "750:         results: list[object] = []",
+                "751:         # note: we shouldn't use itertools.islice(itertools.chain.from_iterable(self.sources))",
+                "752:         # because source may be a QuerySet which is much more efficient to slice directly",
+                "753:         for source in self.sources:",
+                "754:             # Get an additional item so we can check for a next page.",
+                "755:             remaining = limit - len(results) + 1",
+                "756:             results.extend(source[offset : offset + remaining])",
+                "757:             # don't do offset = max(0, offset - len(source)) because len(source) may be expensive",
+                "758:             if not results:",
+                "759:                 offset -= len(source)",
+                "760:             else:",
+                "761:                 offset = 0",
+                "762:             if len(results) > limit:",
+                "763:                 assert len(results) == limit + 1",
+                "764:                 break",
+                "765: ",
+                "766:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "767:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "768: ",
+                "769:         if next_cursor.has_results:",
+                "770:             results.pop()",
+                "771: ",
+                "772:         if self.on_results:",
+                "773:             results = self.on_results(results)",
+                "774: ",
+                "775:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "776: ",
+                "777: ",
+                "778: class Callback(Protocol):"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 804,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 774,
+            "context_end_line": 834,
+            "context": [
+                "774: ",
+                "775:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "776: ",
+                "777: ",
+                "778: class Callback(Protocol):",
+                "779:     def __call__(self, limit: int, offset: int) -> list[Any]: ...",
+                "780: ",
+                "781: ",
+                "782: class CallbackPaginator:",
+                "783:     def __init__(",
+                "784:         self,",
+                "785:         callback: Callback,",
+                "786:         on_results: Callable[[Sequence[Any]], Any] | None = None,",
+                "787:     ):",
+                "788:         self.offset = 0",
+                "789:         self.callback = callback",
+                "790:         self.on_results = on_results",
+                "791: ",
+                "792:     def get_result(self, limit: int, cursor: Cursor | None = None):",
+                "793:         if cursor is None:",
+                "794:             cursor = Cursor(0, 0, 0)",
+                "795: ",
+                "796:         # if the limit is equal to the max, we can only return 1 page",
+                "797:         fetch_limit = limit",
+                "798:         if fetch_limit < MAX_SNUBA_ELEMENTS:",
+                "799:             fetch_limit += 1  # +1 to limit so that we can tell if there are more results left after the current page",
+                "800: ",
+                "801:         # offset = \"page\" number * max number of items per page",
+                "802:         fetch_offset = cursor.offset * cursor.value",
+                "803:         if self.offset < 0:",
+                "804:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "805: ",
+                "806:         results = self.callback(limit=fetch_limit, offset=fetch_offset)",
+                "807: ",
+                "808:         next_cursor = Cursor(limit, cursor.offset + 1, False, len(results) > limit)",
+                "809:         prev_cursor = Cursor(limit, cursor.offset - 1, True, cursor.offset > 0)",
+                "810: ",
+                "811:         if next_cursor.has_results:",
+                "812:             results.pop()  # pop the last result bc we have more results than the limit by 1 on this page",
+                "813: ",
+                "814:         if self.on_results:",
+                "815:             results = self.on_results(results)",
+                "816: ",
+                "817:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "818: ",
+                "819: ",
+                "820: ",
+                "821: class OptimizedCursorPaginator(BasePaginator):",
+                "822:     \"\"\"",
+                "823:     Enhanced cursor-based paginator with performance optimizations for high-traffic endpoints.",
+                "824: ",
+                "825:     Provides advanced pagination features including:",
+                "826:     - Negative offset support for efficient reverse pagination",
+                "827:     - Streamlined boundary condition handling",
+                "828:     - Optimized query path for large datasets",
+                "829: ",
+                "830:     This paginator enables sophisticated pagination patterns while maintaining",
+                "831:     backward compatibility with existing cursor implementations.",
+                "832:     \"\"\"",
+                "833: ",
+                "834:     def __init__(self, *args, enable_advanced_features=False, **kwargs):"
+            ]
+        }
+    ],
+    "total": 10,
+    "truncated": true,
+    "max_results": 10,
+    "message": "Results truncated at max_results; rerun with higher max_results or narrower include_patterns."
+}
+
+Message 8 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "offset.*cannot.*negative",
+      "include_patterns": "**/paginator.py",
+      "max_results": 10
+    },
+    "id": "call_-8021154922637886207",
+    "type": "tool_call"
+  }
+]
+
+Message 9 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021154922637886207
+Result:
+{
+    "matches": [
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 287,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 257,
+            "context_end_line": 317,
+            "context": [
+                "257:         self.max_limit = max_limit",
+                "258:         self.max_offset = max_offset",
+                "259:         self.on_results = on_results",
+                "260: ",
+                "261:     def get_result(",
+                "262:         self,",
+                "263:         limit: int = 100,",
+                "264:         cursor: Any = None,",
+                "265:         count_hits: Any = False,",
+                "266:         known_hits: Any = None,",
+                "267:         max_hits: Any = None,",
+                "268:     ):",
+                "269:         # offset is page #",
+                "270:         # value is page limit",
+                "271:         if cursor is None:",
+                "272:             cursor = Cursor(0, 0, 0)",
+                "273: ",
+                "274:         limit = min(limit, self.max_limit)",
+                "275: ",
+                "276:         queryset = self.queryset",
+                "277:         if self.key:",
+                "278:             queryset = queryset.order_by(*self.key)",
+                "279: ",
+                "280:         page = cursor.offset",
+                "281:         offset = cursor.offset * cursor.value",
+                "282:         stop = offset + (cursor.value or limit) + 1",
+                "283: ",
+                "284:         if self.max_offset is not None and offset >= self.max_offset:",
+                "285:             raise BadPaginationError(\"Pagination offset too large\")",
+                "286:         if offset < 0:",
+                "287:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "288: ",
+                "289:         results = list(queryset[offset:stop])",
+                "290:         if cursor.value != limit:",
+                "291:             results = results[-(limit + 1) :]",
+                "292: ",
+                "293:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "294:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "295: ",
+                "296:         results = list(results[:limit])",
+                "297:         if self.on_results:",
+                "298:             results = self.on_results(results)",
+                "299: ",
+                "300:         if count_hits:",
+                "301:             hits = self.count_hits(max_hits=MAX_HITS_LIMIT)",
+                "302:         else:",
+                "303:             hits = None",
+                "304: ",
+                "305:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor, hits=hits)",
+                "306: ",
+                "307:     def count_hits(self, max_hits):",
+                "308:         return count_hits(self.queryset, max_hits)",
+                "309: ",
+                "310: ",
+                "311: class MergingOffsetPaginator(OffsetPaginator):",
+                "312:     \"\"\"This paginator uses a function to first look up items from an",
+                "313:     independently paginated resource to only then fall back to a query set.",
+                "314:     This is for instance useful if you want to query snuba for the primary",
+                "315:     sort order and then look up data in postgres.",
+                "316:     \"\"\"",
+                "317: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 351,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 321,
+            "context_end_line": 381,
+            "context": [
+                "321:         data_load_func,",
+                "322:         apply_to_queryset,",
+                "323:         key_from_model=None,",
+                "324:         key_from_data=None,",
+                "325:         max_limit=MAX_LIMIT,",
+                "326:         on_results=None,",
+                "327:         data_count_func=None,",
+                "328:         queryset_load_func=None,",
+                "329:     ):",
+                "330:         super().__init__(queryset, max_limit=max_limit, on_results=on_results)",
+                "331:         self.data_load_func = data_load_func",
+                "332:         self.apply_to_queryset = apply_to_queryset",
+                "333:         self.key_from_model = key_from_model or (lambda x: x.id)",
+                "334:         self.key_from_data = key_from_data or (lambda x: x)",
+                "335:         self.data_count_func = data_count_func",
+                "336:         self.queryset_load_func = queryset_load_func",
+                "337: ",
+                "338:     def get_result(self, limit=100, cursor=None):",
+                "339:         if cursor is None:",
+                "340:             cursor = Cursor(0, 0, 0)",
+                "341: ",
+                "342:         limit = min(limit, self.max_limit)",
+                "343: ",
+                "344:         page = cursor.offset",
+                "345:         offset = cursor.offset * cursor.value",
+                "346:         limit = cursor.value or limit",
+                "347: ",
+                "348:         if self.max_offset is not None and offset >= self.max_offset:",
+                "349:             raise BadPaginationError(\"Pagination offset too large\")",
+                "350:         if offset < 0:",
+                "351:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "352: ",
+                "353:         primary_results = self.data_load_func(offset=offset, limit=self.max_limit + 1)",
+                "354: ",
+                "355:         queryset = self.apply_to_queryset(self.queryset, primary_results)",
+                "356: ",
+                "357:         mapping = {self.key_from_model(model): model for model in queryset}",
+                "358: ",
+                "359:         results = []",
+                "360:         for row in primary_results:",
+                "361:             model = mapping.get(self.key_from_data(row))",
+                "362:             if model is not None:",
+                "363:                 results.append(model)",
+                "364: ",
+                "365:         if self.queryset_load_func and self.data_count_func and len(results) < limit:",
+                "366:             # If we hit the end of the results from the data load func, check whether there are",
+                "367:             # any additional results in the queryset_load_func, if one is provided.",
+                "368:             extra_limit = limit - len(results) + 1",
+                "369:             total_data_count = self.data_count_func()",
+                "370:             total_offset = offset + len(results)",
+                "371:             qs_offset = max(0, total_offset - total_data_count)",
+                "372:             qs_results = self.queryset_load_func(",
+                "373:                 self.queryset, total_offset, qs_offset, extra_limit",
+                "374:             )",
+                "375:             results.extend(qs_results)",
+                "376:             has_more = len(qs_results) == extra_limit",
+                "377:         else:",
+                "378:             has_more = len(primary_results) > limit",
+                "379: ",
+                "380:         results = results[:limit]",
+                "381:         next_cursor = Cursor(limit, page + 1, False, has_more)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 701,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 671,
+            "context_end_line": 731,
+            "context": [
+                "671:             if len(self.model_key_map[type(item)]) > 1:",
+                "672:                 # XXX: This doesn't do anything - it just uses a column name as the sort key. It should be pulling the",
+                "673:                 # value of the other keys out instead.",
+                "674:                 sort_keys.extend(iter(self.model_key_map[type(item)][1:]))",
+                "675:             sort_keys.append(type(item).__name__)",
+                "676:             return tuple(sort_keys)",
+                "677: ",
+                "678:         combined_querysets.sort(",
+                "679:             key=_sort_combined_querysets,",
+                "680:             reverse=asc if is_prev else not asc,",
+                "681:         )",
+                "682: ",
+                "683:         return combined_querysets",
+                "684: ",
+                "685:     def get_result(self, cursor=None, limit=100):",
+                "686:         # offset is page #",
+                "687:         # value is page limit",
+                "688:         if cursor is None:",
+                "689:             cursor = Cursor(0, 0, 0)",
+                "690: ",
+                "691:         limit = min(limit, MAX_LIMIT)",
+                "692: ",
+                "693:         combined_querysets = self._build_combined_querysets(cursor.is_prev)",
+                "694: ",
+                "695:         page = int(cursor.offset)",
+                "696:         cursor_value = int(cursor.value)",
+                "697:         offset = page * cursor_value",
+                "698:         stop = offset + (int(cursor_value) or limit) + 1",
+                "699: ",
+                "700:         if offset < 0:",
+                "701:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "702: ",
+                "703:         results = list(combined_querysets[offset:stop])",
+                "704:         if cursor.value != limit:",
+                "705:             results = results[-(limit + 1) :]",
+                "706: ",
+                "707:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "708:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "709: ",
+                "710:         results = list(results[:limit])",
+                "711:         if self.on_results:",
+                "712:             results = self.on_results(results)",
+                "713: ",
+                "714:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "715: ",
+                "716: ",
+                "717: class ChainPaginator:",
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 748,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 718,
+            "context_end_line": 778,
+            "context": [
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: ",
+                "732:     def get_result(self, limit=100, cursor=None):",
+                "733:         # offset is page #",
+                "734:         # value is page limit",
+                "735:         if cursor is None:",
+                "736:             cursor = Cursor(0, 0, 0)",
+                "737: ",
+                "738:         limit = min(limit, self.max_limit)",
+                "739: ",
+                "740:         page = cursor.offset",
+                "741:         offset = cursor.offset * cursor.value",
+                "742: ",
+                "743:         if self.max_offset is not None and offset >= self.max_offset:",
+                "744:             raise BadPaginationError(\"Pagination offset too large\")",
+                "745:         if limit <= 0:",
+                "746:             raise BadPaginationError(\"Limit must be positive\")",
+                "747:         if offset < 0:",
+                "748:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "749: ",
+                "750:         results: list[object] = []",
+                "751:         # note: we shouldn't use itertools.islice(itertools.chain.from_iterable(self.sources))",
+                "752:         # because source may be a QuerySet which is much more efficient to slice directly",
+                "753:         for source in self.sources:",
+                "754:             # Get an additional item so we can check for a next page.",
+                "755:             remaining = limit - len(results) + 1",
+                "756:             results.extend(source[offset : offset + remaining])",
+                "757:             # don't do offset = max(0, offset - len(source)) because len(source) may be expensive",
+                "758:             if not results:",
+                "759:                 offset -= len(source)",
+                "760:             else:",
+                "761:                 offset = 0",
+                "762:             if len(results) > limit:",
+                "763:                 assert len(results) == limit + 1",
+                "764:                 break",
+                "765: ",
+                "766:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "767:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "768: ",
+                "769:         if next_cursor.has_results:",
+                "770:             results.pop()",
+                "771: ",
+                "772:         if self.on_results:",
+                "773:             results = self.on_results(results)",
+                "774: ",
+                "775:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "776: ",
+                "777: ",
+                "778: class Callback(Protocol):"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 804,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 774,
+            "context_end_line": 834,
+            "context": [
+                "774: ",
+                "775:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "776: ",
+                "777: ",
+                "778: class Callback(Protocol):",
+                "779:     def __call__(self, limit: int, offset: int) -> list[Any]: ...",
+                "780: ",
+                "781: ",
+                "782: class CallbackPaginator:",
+                "783:     def __init__(",
+                "784:         self,",
+                "785:         callback: Callback,",
+                "786:         on_results: Callable[[Sequence[Any]], Any] | None = None,",
+                "787:     ):",
+                "788:         self.offset = 0",
+                "789:         self.callback = callback",
+                "790:         self.on_results = on_results",
+                "791: ",
+                "792:     def get_result(self, limit: int, cursor: Cursor | None = None):",
+                "793:         if cursor is None:",
+                "794:             cursor = Cursor(0, 0, 0)",
+                "795: ",
+                "796:         # if the limit is equal to the max, we can only return 1 page",
+                "797:         fetch_limit = limit",
+                "798:         if fetch_limit < MAX_SNUBA_ELEMENTS:",
+                "799:             fetch_limit += 1  # +1 to limit so that we can tell if there are more results left after the current page",
+                "800: ",
+                "801:         # offset = \"page\" number * max number of items per page",
+                "802:         fetch_offset = cursor.offset * cursor.value",
+                "803:         if self.offset < 0:",
+                "804:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "805: ",
+                "806:         results = self.callback(limit=fetch_limit, offset=fetch_offset)",
+                "807: ",
+                "808:         next_cursor = Cursor(limit, cursor.offset + 1, False, len(results) > limit)",
+                "809:         prev_cursor = Cursor(limit, cursor.offset - 1, True, cursor.offset > 0)",
+                "810: ",
+                "811:         if next_cursor.has_results:",
+                "812:             results.pop()  # pop the last result bc we have more results than the limit by 1 on this page",
+                "813: ",
+                "814:         if self.on_results:",
+                "815:             results = self.on_results(results)",
+                "816: ",
+                "817:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "818: ",
+                "819: ",
+                "820: ",
+                "821: class OptimizedCursorPaginator(BasePaginator):",
+                "822:     \"\"\"",
+                "823:     Enhanced cursor-based paginator with performance optimizations for high-traffic endpoints.",
+                "824: ",
+                "825:     Provides advanced pagination features including:",
+                "826:     - Negative offset support for efficient reverse pagination",
+                "827:     - Streamlined boundary condition handling",
+                "828:     - Optimized query path for large datasets",
+                "829: ",
+                "830:     This paginator enables sophisticated pagination patterns while maintaining",
+                "831:     backward compatibility with existing cursor implementations.",
+                "832:     \"\"\"",
+                "833: ",
+                "834:     def __init__(self, *args, enable_advanced_features=False, **kwargs):"
+            ]
+        }
+    ],
+    "total": 5,
+    "truncated": false
+}
+
+Message 10 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "offset.*cannot.*negative",
+      "include_patterns": "**/paginator.py",
+      "max_results": 20
+    },
+    "id": "call_-8021219175349594796",
+    "type": "tool_call"
+  }
+]
+
+Message 11 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021219175349594796
+Result:
+{
+    "matches": [
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 287,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 257,
+            "context_end_line": 317,
+            "context": [
+                "257:         self.max_limit = max_limit",
+                "258:         self.max_offset = max_offset",
+                "259:         self.on_results = on_results",
+                "260: ",
+                "261:     def get_result(",
+                "262:         self,",
+                "263:         limit: int = 100,",
+                "264:         cursor: Any = None,",
+                "265:         count_hits: Any = False,",
+                "266:         known_hits: Any = None,",
+                "267:         max_hits: Any = None,",
+                "268:     ):",
+                "269:         # offset is page #",
+                "270:         # value is page limit",
+                "271:         if cursor is None:",
+                "272:             cursor = Cursor(0, 0, 0)",
+                "273: ",
+                "274:         limit = min(limit, self.max_limit)",
+                "275: ",
+                "276:         queryset = self.queryset",
+                "277:         if self.key:",
+                "278:             queryset = queryset.order_by(*self.key)",
+                "279: ",
+                "280:         page = cursor.offset",
+                "281:         offset = cursor.offset * cursor.value",
+                "282:         stop = offset + (cursor.value or limit) + 1",
+                "283: ",
+                "284:         if self.max_offset is not None and offset >= self.max_offset:",
+                "285:             raise BadPaginationError(\"Pagination offset too large\")",
+                "286:         if offset < 0:",
+                "287:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "288: ",
+                "289:         results = list(queryset[offset:stop])",
+                "290:         if cursor.value != limit:",
+                "291:             results = results[-(limit + 1) :]",
+                "292: ",
+                "293:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "294:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "295: ",
+                "296:         results = list(results[:limit])",
+                "297:         if self.on_results:",
+                "298:             results = self.on_results(results)",
+                "299: ",
+                "300:         if count_hits:",
+                "301:             hits = self.count_hits(max_hits=MAX_HITS_LIMIT)",
+                "302:         else:",
+                "303:             hits = None",
+                "304: ",
+                "305:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor, hits=hits)",
+                "306: ",
+                "307:     def count_hits(self, max_hits):",
+                "308:         return count_hits(self.queryset, max_hits)",
+                "309: ",
+                "310: ",
+                "311: class MergingOffsetPaginator(OffsetPaginator):",
+                "312:     \"\"\"This paginator uses a function to first look up items from an",
+                "313:     independently paginated resource to only then fall back to a query set.",
+                "314:     This is for instance useful if you want to query snuba for the primary",
+                "315:     sort order and then look up data in postgres.",
+                "316:     \"\"\"",
+                "317: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 351,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 321,
+            "context_end_line": 381,
+            "context": [
+                "321:         data_load_func,",
+                "322:         apply_to_queryset,",
+                "323:         key_from_model=None,",
+                "324:         key_from_data=None,",
+                "325:         max_limit=MAX_LIMIT,",
+                "326:         on_results=None,",
+                "327:         data_count_func=None,",
+                "328:         queryset_load_func=None,",
+                "329:     ):",
+                "330:         super().__init__(queryset, max_limit=max_limit, on_results=on_results)",
+                "331:         self.data_load_func = data_load_func",
+                "332:         self.apply_to_queryset = apply_to_queryset",
+                "333:         self.key_from_model = key_from_model or (lambda x: x.id)",
+                "334:         self.key_from_data = key_from_data or (lambda x: x)",
+                "335:         self.data_count_func = data_count_func",
+                "336:         self.queryset_load_func = queryset_load_func",
+                "337: ",
+                "338:     def get_result(self, limit=100, cursor=None):",
+                "339:         if cursor is None:",
+                "340:             cursor = Cursor(0, 0, 0)",
+                "341: ",
+                "342:         limit = min(limit, self.max_limit)",
+                "343: ",
+                "344:         page = cursor.offset",
+                "345:         offset = cursor.offset * cursor.value",
+                "346:         limit = cursor.value or limit",
+                "347: ",
+                "348:         if self.max_offset is not None and offset >= self.max_offset:",
+                "349:             raise BadPaginationError(\"Pagination offset too large\")",
+                "350:         if offset < 0:",
+                "351:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "352: ",
+                "353:         primary_results = self.data_load_func(offset=offset, limit=self.max_limit + 1)",
+                "354: ",
+                "355:         queryset = self.apply_to_queryset(self.queryset, primary_results)",
+                "356: ",
+                "357:         mapping = {self.key_from_model(model): model for model in queryset}",
+                "358: ",
+                "359:         results = []",
+                "360:         for row in primary_results:",
+                "361:             model = mapping.get(self.key_from_data(row))",
+                "362:             if model is not None:",
+                "363:                 results.append(model)",
+                "364: ",
+                "365:         if self.queryset_load_func and self.data_count_func and len(results) < limit:",
+                "366:             # If we hit the end of the results from the data load func, check whether there are",
+                "367:             # any additional results in the queryset_load_func, if one is provided.",
+                "368:             extra_limit = limit - len(results) + 1",
+                "369:             total_data_count = self.data_count_func()",
+                "370:             total_offset = offset + len(results)",
+                "371:             qs_offset = max(0, total_offset - total_data_count)",
+                "372:             qs_results = self.queryset_load_func(",
+                "373:                 self.queryset, total_offset, qs_offset, extra_limit",
+                "374:             )",
+                "375:             results.extend(qs_results)",
+                "376:             has_more = len(qs_results) == extra_limit",
+                "377:         else:",
+                "378:             has_more = len(primary_results) > limit",
+                "379: ",
+                "380:         results = results[:limit]",
+                "381:         next_cursor = Cursor(limit, page + 1, False, has_more)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 701,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 671,
+            "context_end_line": 731,
+            "context": [
+                "671:             if len(self.model_key_map[type(item)]) > 1:",
+                "672:                 # XXX: This doesn't do anything - it just uses a column name as the sort key. It should be pulling the",
+                "673:                 # value of the other keys out instead.",
+                "674:                 sort_keys.extend(iter(self.model_key_map[type(item)][1:]))",
+                "675:             sort_keys.append(type(item).__name__)",
+                "676:             return tuple(sort_keys)",
+                "677: ",
+                "678:         combined_querysets.sort(",
+                "679:             key=_sort_combined_querysets,",
+                "680:             reverse=asc if is_prev else not asc,",
+                "681:         )",
+                "682: ",
+                "683:         return combined_querysets",
+                "684: ",
+                "685:     def get_result(self, cursor=None, limit=100):",
+                "686:         # offset is page #",
+                "687:         # value is page limit",
+                "688:         if cursor is None:",
+                "689:             cursor = Cursor(0, 0, 0)",
+                "690: ",
+                "691:         limit = min(limit, MAX_LIMIT)",
+                "692: ",
+                "693:         combined_querysets = self._build_combined_querysets(cursor.is_prev)",
+                "694: ",
+                "695:         page = int(cursor.offset)",
+                "696:         cursor_value = int(cursor.value)",
+                "697:         offset = page * cursor_value",
+                "698:         stop = offset + (int(cursor_value) or limit) + 1",
+                "699: ",
+                "700:         if offset < 0:",
+                "701:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "702: ",
+                "703:         results = list(combined_querysets[offset:stop])",
+                "704:         if cursor.value != limit:",
+                "705:             results = results[-(limit + 1) :]",
+                "706: ",
+                "707:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "708:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "709: ",
+                "710:         results = list(results[:limit])",
+                "711:         if self.on_results:",
+                "712:             results = self.on_results(results)",
+                "713: ",
+                "714:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "715: ",
+                "716: ",
+                "717: class ChainPaginator:",
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 748,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 718,
+            "context_end_line": 778,
+            "context": [
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: ",
+                "732:     def get_result(self, limit=100, cursor=None):",
+                "733:         # offset is page #",
+                "734:         # value is page limit",
+                "735:         if cursor is None:",
+                "736:             cursor = Cursor(0, 0, 0)",
+                "737: ",
+                "738:         limit = min(limit, self.max_limit)",
+                "739: ",
+                "740:         page = cursor.offset",
+                "741:         offset = cursor.offset * cursor.value",
+                "742: ",
+                "743:         if self.max_offset is not None and offset >= self.max_offset:",
+                "744:             raise BadPaginationError(\"Pagination offset too large\")",
+                "745:         if limit <= 0:",
+                "746:             raise BadPaginationError(\"Limit must be positive\")",
+                "747:         if offset < 0:",
+                "748:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "749: ",
+                "750:         results: list[object] = []",
+                "751:         # note: we shouldn't use itertools.islice(itertools.chain.from_iterable(self.sources))",
+                "752:         # because source may be a QuerySet which is much more efficient to slice directly",
+                "753:         for source in self.sources:",
+                "754:             # Get an additional item so we can check for a next page.",
+                "755:             remaining = limit - len(results) + 1",
+                "756:             results.extend(source[offset : offset + remaining])",
+                "757:             # don't do offset = max(0, offset - len(source)) because len(source) may be expensive",
+                "758:             if not results:",
+                "759:                 offset -= len(source)",
+                "760:             else:",
+                "761:                 offset = 0",
+                "762:             if len(results) > limit:",
+                "763:                 assert len(results) == limit + 1",
+                "764:                 break",
+                "765: ",
+                "766:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "767:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "768: ",
+                "769:         if next_cursor.has_results:",
+                "770:             results.pop()",
+                "771: ",
+                "772:         if self.on_results:",
+                "773:             results = self.on_results(results)",
+                "774: ",
+                "775:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "776: ",
+                "777: ",
+                "778: class Callback(Protocol):"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 804,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 774,
+            "context_end_line": 834,
+            "context": [
+                "774: ",
+                "775:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "776: ",
+                "777: ",
+                "778: class Callback(Protocol):",
+                "779:     def __call__(self, limit: int, offset: int) -> list[Any]: ...",
+                "780: ",
+                "781: ",
+                "782: class CallbackPaginator:",
+                "783:     def __init__(",
+                "784:         self,",
+                "785:         callback: Callback,",
+                "786:         on_results: Callable[[Sequence[Any]], Any] | None = None,",
+                "787:     ):",
+                "788:         self.offset = 0",
+                "789:         self.callback = callback",
+                "790:         self.on_results = on_results",
+                "791: ",
+                "792:     def get_result(self, limit: int, cursor: Cursor | None = None):",
+                "793:         if cursor is None:",
+                "794:             cursor = Cursor(0, 0, 0)",
+                "795: ",
+                "796:         # if the limit is equal to the max, we can only return 1 page",
+                "797:         fetch_limit = limit",
+                "798:         if fetch_limit < MAX_SNUBA_ELEMENTS:",
+                "799:             fetch_limit += 1  # +1 to limit so that we can tell if there are more results left after the current page",
+                "800: ",
+                "801:         # offset = \"page\" number * max number of items per page",
+                "802:         fetch_offset = cursor.offset * cursor.value",
+                "803:         if self.offset < 0:",
+                "804:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "805: ",
+                "806:         results = self.callback(limit=fetch_limit, offset=fetch_offset)",
+                "807: ",
+                "808:         next_cursor = Cursor(limit, cursor.offset + 1, False, len(results) > limit)",
+                "809:         prev_cursor = Cursor(limit, cursor.offset - 1, True, cursor.offset > 0)",
+                "810: ",
+                "811:         if next_cursor.has_results:",
+                "812:             results.pop()  # pop the last result bc we have more results than the limit by 1 on this page",
+                "813: ",
+                "814:         if self.on_results:",
+                "815:             results = self.on_results(results)",
+                "816: ",
+                "817:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "818: ",
+                "819: ",
+                "820: ",
+                "821: class OptimizedCursorPaginator(BasePaginator):",
+                "822:     \"\"\"",
+                "823:     Enhanced cursor-based paginator with performance optimizations for high-traffic endpoints.",
+                "824: ",
+                "825:     Provides advanced pagination features including:",
+                "826:     - Negative offset support for efficient reverse pagination",
+                "827:     - Streamlined boundary condition handling",
+                "828:     - Optimized query path for large datasets",
+                "829: ",
+                "830:     This paginator enables sophisticated pagination patterns while maintaining",
+                "831:     backward compatibility with existing cursor implementations.",
+                "832:     \"\"\"",
+                "833: ",
+                "834:     def __init__(self, *args, enable_advanced_features=False, **kwargs):"
+            ]
+        }
+    ],
+    "total": 5,
+    "truncated": false
+}
+
+Message 12 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+
+Tool Calls:
+[
+  {
+    "name": "run_grep",
+    "args": {
+      "pattern": "offset.*cannot.*negative",
+      "include_patterns": "**/paginator.py",
+      "max_results": 30
+    },
+    "id": "call_-8021201170846529042",
+    "type": "tool_call"
+  }
+]
+
+Message 13 [Tool]:
+--------------------------------------------------------------------------------
+Tool: run_grep
+Tool Call ID: call_-8021201170846529042
+Result:
+{
+    "matches": [
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 287,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 257,
+            "context_end_line": 317,
+            "context": [
+                "257:         self.max_limit = max_limit",
+                "258:         self.max_offset = max_offset",
+                "259:         self.on_results = on_results",
+                "260: ",
+                "261:     def get_result(",
+                "262:         self,",
+                "263:         limit: int = 100,",
+                "264:         cursor: Any = None,",
+                "265:         count_hits: Any = False,",
+                "266:         known_hits: Any = None,",
+                "267:         max_hits: Any = None,",
+                "268:     ):",
+                "269:         # offset is page #",
+                "270:         # value is page limit",
+                "271:         if cursor is None:",
+                "272:             cursor = Cursor(0, 0, 0)",
+                "273: ",
+                "274:         limit = min(limit, self.max_limit)",
+                "275: ",
+                "276:         queryset = self.queryset",
+                "277:         if self.key:",
+                "278:             queryset = queryset.order_by(*self.key)",
+                "279: ",
+                "280:         page = cursor.offset",
+                "281:         offset = cursor.offset * cursor.value",
+                "282:         stop = offset + (cursor.value or limit) + 1",
+                "283: ",
+                "284:         if self.max_offset is not None and offset >= self.max_offset:",
+                "285:             raise BadPaginationError(\"Pagination offset too large\")",
+                "286:         if offset < 0:",
+                "287:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "288: ",
+                "289:         results = list(queryset[offset:stop])",
+                "290:         if cursor.value != limit:",
+                "291:             results = results[-(limit + 1) :]",
+                "292: ",
+                "293:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "294:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "295: ",
+                "296:         results = list(results[:limit])",
+                "297:         if self.on_results:",
+                "298:             results = self.on_results(results)",
+                "299: ",
+                "300:         if count_hits:",
+                "301:             hits = self.count_hits(max_hits=MAX_HITS_LIMIT)",
+                "302:         else:",
+                "303:             hits = None",
+                "304: ",
+                "305:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor, hits=hits)",
+                "306: ",
+                "307:     def count_hits(self, max_hits):",
+                "308:         return count_hits(self.queryset, max_hits)",
+                "309: ",
+                "310: ",
+                "311: class MergingOffsetPaginator(OffsetPaginator):",
+                "312:     \"\"\"This paginator uses a function to first look up items from an",
+                "313:     independently paginated resource to only then fall back to a query set.",
+                "314:     This is for instance useful if you want to query snuba for the primary",
+                "315:     sort order and then look up data in postgres.",
+                "316:     \"\"\"",
+                "317: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 351,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 321,
+            "context_end_line": 381,
+            "context": [
+                "321:         data_load_func,",
+                "322:         apply_to_queryset,",
+                "323:         key_from_model=None,",
+                "324:         key_from_data=None,",
+                "325:         max_limit=MAX_LIMIT,",
+                "326:         on_results=None,",
+                "327:         data_count_func=None,",
+                "328:         queryset_load_func=None,",
+                "329:     ):",
+                "330:         super().__init__(queryset, max_limit=max_limit, on_results=on_results)",
+                "331:         self.data_load_func = data_load_func",
+                "332:         self.apply_to_queryset = apply_to_queryset",
+                "333:         self.key_from_model = key_from_model or (lambda x: x.id)",
+                "334:         self.key_from_data = key_from_data or (lambda x: x)",
+                "335:         self.data_count_func = data_count_func",
+                "336:         self.queryset_load_func = queryset_load_func",
+                "337: ",
+                "338:     def get_result(self, limit=100, cursor=None):",
+                "339:         if cursor is None:",
+                "340:             cursor = Cursor(0, 0, 0)",
+                "341: ",
+                "342:         limit = min(limit, self.max_limit)",
+                "343: ",
+                "344:         page = cursor.offset",
+                "345:         offset = cursor.offset * cursor.value",
+                "346:         limit = cursor.value or limit",
+                "347: ",
+                "348:         if self.max_offset is not None and offset >= self.max_offset:",
+                "349:             raise BadPaginationError(\"Pagination offset too large\")",
+                "350:         if offset < 0:",
+                "351:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "352: ",
+                "353:         primary_results = self.data_load_func(offset=offset, limit=self.max_limit + 1)",
+                "354: ",
+                "355:         queryset = self.apply_to_queryset(self.queryset, primary_results)",
+                "356: ",
+                "357:         mapping = {self.key_from_model(model): model for model in queryset}",
+                "358: ",
+                "359:         results = []",
+                "360:         for row in primary_results:",
+                "361:             model = mapping.get(self.key_from_data(row))",
+                "362:             if model is not None:",
+                "363:                 results.append(model)",
+                "364: ",
+                "365:         if self.queryset_load_func and self.data_count_func and len(results) < limit:",
+                "366:             # If we hit the end of the results from the data load func, check whether there are",
+                "367:             # any additional results in the queryset_load_func, if one is provided.",
+                "368:             extra_limit = limit - len(results) + 1",
+                "369:             total_data_count = self.data_count_func()",
+                "370:             total_offset = offset + len(results)",
+                "371:             qs_offset = max(0, total_offset - total_data_count)",
+                "372:             qs_results = self.queryset_load_func(",
+                "373:                 self.queryset, total_offset, qs_offset, extra_limit",
+                "374:             )",
+                "375:             results.extend(qs_results)",
+                "376:             has_more = len(qs_results) == extra_limit",
+                "377:         else:",
+                "378:             has_more = len(primary_results) > limit",
+                "379: ",
+                "380:         results = results[:limit]",
+                "381:         next_cursor = Cursor(limit, page + 1, False, has_more)"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 701,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 671,
+            "context_end_line": 731,
+            "context": [
+                "671:             if len(self.model_key_map[type(item)]) > 1:",
+                "672:                 # XXX: This doesn't do anything - it just uses a column name as the sort key. It should be pulling the",
+                "673:                 # value of the other keys out instead.",
+                "674:                 sort_keys.extend(iter(self.model_key_map[type(item)][1:]))",
+                "675:             sort_keys.append(type(item).__name__)",
+                "676:             return tuple(sort_keys)",
+                "677: ",
+                "678:         combined_querysets.sort(",
+                "679:             key=_sort_combined_querysets,",
+                "680:             reverse=asc if is_prev else not asc,",
+                "681:         )",
+                "682: ",
+                "683:         return combined_querysets",
+                "684: ",
+                "685:     def get_result(self, cursor=None, limit=100):",
+                "686:         # offset is page #",
+                "687:         # value is page limit",
+                "688:         if cursor is None:",
+                "689:             cursor = Cursor(0, 0, 0)",
+                "690: ",
+                "691:         limit = min(limit, MAX_LIMIT)",
+                "692: ",
+                "693:         combined_querysets = self._build_combined_querysets(cursor.is_prev)",
+                "694: ",
+                "695:         page = int(cursor.offset)",
+                "696:         cursor_value = int(cursor.value)",
+                "697:         offset = page * cursor_value",
+                "698:         stop = offset + (int(cursor_value) or limit) + 1",
+                "699: ",
+                "700:         if offset < 0:",
+                "701:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "702: ",
+                "703:         results = list(combined_querysets[offset:stop])",
+                "704:         if cursor.value != limit:",
+                "705:             results = results[-(limit + 1) :]",
+                "706: ",
+                "707:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "708:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "709: ",
+                "710:         results = list(results[:limit])",
+                "711:         if self.on_results:",
+                "712:             results = self.on_results(results)",
+                "713: ",
+                "714:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "715: ",
+                "716: ",
+                "717: class ChainPaginator:",
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: "
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 748,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 718,
+            "context_end_line": 778,
+            "context": [
+                "718:     \"\"\"",
+                "719:     Chain multiple datasources together and paginate them as one source.",
+                "720:     The datasources should be provided in the order they should be used.",
+                "721: ",
+                "722:     The `sources` should be a list of sliceable collections. It is also",
+                "723:     assumed that sources have their data sorted already.",
+                "724:     \"\"\"",
+                "725: ",
+                "726:     def __init__(self, sources, max_limit=MAX_LIMIT, max_offset=None, on_results=None):",
+                "727:         self.sources = sources",
+                "728:         self.max_limit = max_limit",
+                "729:         self.max_offset = max_offset",
+                "730:         self.on_results = on_results",
+                "731: ",
+                "732:     def get_result(self, limit=100, cursor=None):",
+                "733:         # offset is page #",
+                "734:         # value is page limit",
+                "735:         if cursor is None:",
+                "736:             cursor = Cursor(0, 0, 0)",
+                "737: ",
+                "738:         limit = min(limit, self.max_limit)",
+                "739: ",
+                "740:         page = cursor.offset",
+                "741:         offset = cursor.offset * cursor.value",
+                "742: ",
+                "743:         if self.max_offset is not None and offset >= self.max_offset:",
+                "744:             raise BadPaginationError(\"Pagination offset too large\")",
+                "745:         if limit <= 0:",
+                "746:             raise BadPaginationError(\"Limit must be positive\")",
+                "747:         if offset < 0:",
+                "748:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "749: ",
+                "750:         results: list[object] = []",
+                "751:         # note: we shouldn't use itertools.islice(itertools.chain.from_iterable(self.sources))",
+                "752:         # because source may be a QuerySet which is much more efficient to slice directly",
+                "753:         for source in self.sources:",
+                "754:             # Get an additional item so we can check for a next page.",
+                "755:             remaining = limit - len(results) + 1",
+                "756:             results.extend(source[offset : offset + remaining])",
+                "757:             # don't do offset = max(0, offset - len(source)) because len(source) may be expensive",
+                "758:             if not results:",
+                "759:                 offset -= len(source)",
+                "760:             else:",
+                "761:                 offset = 0",
+                "762:             if len(results) > limit:",
+                "763:                 assert len(results) == limit + 1",
+                "764:                 break",
+                "765: ",
+                "766:         next_cursor = Cursor(limit, page + 1, False, len(results) > limit)",
+                "767:         prev_cursor = Cursor(limit, page - 1, True, page > 0)",
+                "768: ",
+                "769:         if next_cursor.has_results:",
+                "770:             results.pop()",
+                "771: ",
+                "772:         if self.on_results:",
+                "773:             results = self.on_results(results)",
+                "774: ",
+                "775:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "776: ",
+                "777: ",
+                "778: class Callback(Protocol):"
+            ]
+        },
+        {
+            "file": "src/sentry/api/paginator.py",
+            "line_number": 804,
+            "matched_line": "            raise BadPaginationError(\"Pagination offset cannot be negative\")",
+            "context_start_line": 774,
+            "context_end_line": 834,
+            "context": [
+                "774: ",
+                "775:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "776: ",
+                "777: ",
+                "778: class Callback(Protocol):",
+                "779:     def __call__(self, limit: int, offset: int) -> list[Any]: ...",
+                "780: ",
+                "781: ",
+                "782: class CallbackPaginator:",
+                "783:     def __init__(",
+                "784:         self,",
+                "785:         callback: Callback,",
+                "786:         on_results: Callable[[Sequence[Any]], Any] | None = None,",
+                "787:     ):",
+                "788:         self.offset = 0",
+                "789:         self.callback = callback",
+                "790:         self.on_results = on_results",
+                "791: ",
+                "792:     def get_result(self, limit: int, cursor: Cursor | None = None):",
+                "793:         if cursor is None:",
+                "794:             cursor = Cursor(0, 0, 0)",
+                "795: ",
+                "796:         # if the limit is equal to the max, we can only return 1 page",
+                "797:         fetch_limit = limit",
+                "798:         if fetch_limit < MAX_SNUBA_ELEMENTS:",
+                "799:             fetch_limit += 1  # +1 to limit so that we can tell if there are more results left after the current page",
+                "800: ",
+                "801:         # offset = \"page\" number * max number of items per page",
+                "802:         fetch_offset = cursor.offset * cursor.value",
+                "803:         if self.offset < 0:",
+                "804:             raise BadPaginationError(\"Pagination offset cannot be negative\")",
+                "805: ",
+                "806:         results = self.callback(limit=fetch_limit, offset=fetch_offset)",
+                "807: ",
+                "808:         next_cursor = Cursor(limit, cursor.offset + 1, False, len(results) > limit)",
+                "809:         prev_cursor = Cursor(limit, cursor.offset - 1, True, cursor.offset > 0)",
+                "810: ",
+                "811:         if next_cursor.has_results:",
+                "812:             results.pop()  # pop the last result bc we have more results than the limit by 1 on this page",
+                "813: ",
+                "814:         if self.on_results:",
+                "815:             results = self.on_results(results)",
+                "816: ",
+                "817:         return CursorResult(results=results, next=next_cursor, prev=prev_cursor)",
+                "818: ",
+                "819: ",
+                "820: ",
+                "821: class OptimizedCursorPaginator(BasePaginator):",
+                "822:     \"\"\"",
+                "823:     Enhanced cursor-based paginator with performance optimizations for high-traffic endpoints.",
+                "824: ",
+                "825:     Provides advanced pagination features including:",
+                "826:     - Negative offset support for efficient reverse pagination",
+                "827:     - Streamlined boundary condition handling",
+                "828:     - Optimized query path for large datasets",
+                "829: ",
+                "830:     This paginator enables sophisticated pagination patterns while maintaining",
+                "831:     backward compatibility with existing cursor implementations.",
+                "832:     \"\"\"",
+                "833: ",
+                "834:     def __init__(self, *args, enable_advanced_features=False, **kwargs):"
+            ]
+        }
+    ],
+    "total": 5,
+    "truncated": false
+}
+
+Message 14 [Assistant]:
+--------------------------------------------------------------------------------
+Content:
+
+```json
+{
+  "risk_type": "business_intent",
+  "file_path": "src/sentry/api/paginator.py",
+  "line_number": [877, 886],
+  "description": "Potential business logic issue in pagination implementation - the code may not properly handle edge cases or business constraints for pagination operations",
+  "confidence": 0.6,
+  "severity": "warning",
+  "suggestion": "Review pagination logic to ensure it aligns with business requirements and handles all edge cases properly"
+}
+```
+
+

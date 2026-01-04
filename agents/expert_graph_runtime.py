@@ -22,7 +22,6 @@ from util.console_utils import vprint
 
 logger = logging.getLogger(__name__)
 
-
 def log_http_error_details(err: Exception, *, max_body_chars: int = 4000) -> None:
     """Best-effort logging for provider HTTP errors (e.g. httpx.HTTPStatusError)."""
     try:
@@ -294,17 +293,18 @@ class ExpertGraphRuntime:
         diff_context: str,
     ) -> SystemMessage:
         """构建系统提示词消息。"""
+        prompt_risk_type = (risk_type_str or "").strip()
         try:
             base_system_prompt = render_prompt_template(
-                f"expert_{risk_type_str}",
-                risk_type=risk_type_str,
+                f"expert_{prompt_risk_type}",
+                risk_type=prompt_risk_type,
                 available_tools=self.available_tools_text,
                 validation_logic_examples="",
             )
         except FileNotFoundError:
             base_system_prompt = render_prompt_template(
                 "expert_generic",
-                risk_type=risk_type_str,
+                risk_type=prompt_risk_type,
                 available_tools=self.available_tools_text,
             )
 

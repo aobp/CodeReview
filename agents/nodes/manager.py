@@ -197,7 +197,7 @@ def _get_expanded_format_instructions(parser: PydanticOutputParser) -> str:
 
 
 def _convert_lint_errors_to_risk_items(lint_errors: List[Dict[str, Any]]) -> List[RiskItem]:
-    """将 lint 错误转换为 RiskItem 对象（risk_type=syntax）。"""
+    """将 lint 错误转换为 RiskItem 对象（risk_type=Syntax_Static_Errors）。"""
     risk_items = []
     for error in lint_errors:
         try:
@@ -216,7 +216,7 @@ def _convert_lint_errors_to_risk_items(lint_errors: List[Dict[str, Any]]) -> Lis
             # Convert single line number to range format [line, line]
             line_num = int(line_number) if line_number else 1
             risk_item = RiskItem(
-                risk_type=RiskType.SYNTAX,
+                risk_type=RiskType.SYNTAX_STATIC_ERRORS,
                 file_path=file_path,
                 line_number=[line_num, line_num],  # Must be [start, end] format
                 description=description,
