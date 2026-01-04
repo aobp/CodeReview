@@ -283,12 +283,32 @@ def create_tools_with_context(
         include_patterns = _normalize_patterns(include_patterns, default=["*"])
         exclude_patterns = _normalize_patterns(exclude_patterns, default=[])
 
+        # Common model mistake: pass extension-only glob like ".py" instead of "*.py".
+        def _fix_extension_globs(globs: List[str]) -> List[str]:
+            out: List[str] = []
+            for g in globs:
+                s = (g or "").strip()
+                if not s:
+                    continue
+                if s.startswith(".") and ("*" not in s) and ("/" not in s) and ("\\" not in s):
+                    out.append(f"*{s}")
+                    continue
+                out.append(s)
+            return out or ["*"]
+
+        include_patterns = _fix_extension_globs(include_patterns)
+
         # Common model mistake: write an escaped regex like "\\.get\\(" but forget is_regex=true.
         # If we see typical escaped regex metacharacters, treat it as regex.
         effective_is_regex = bool(is_regex)
         if (not effective_is_regex) and isinstance(pattern, str) and ("\\" in pattern):
             escaped_meta = ("\\.", "\\(", "\\)", "\\[", "\\]", "\\+", "\\*", "\\?", "\\|", "\\^", "\\$")
             if any(tok in pattern for tok in escaped_meta):
+                effective_is_regex = True
+        # Another common model mistake: use regex operators (.* or |) without setting is_regex=true.
+        if (not effective_is_regex) and isinstance(pattern, str):
+            regexish_tokens = (".*", ".+", ".?", "|", "^", "$", "(", ")", "[", "]", "{", "}")
+            if any(tok in pattern for tok in regexish_tokens):
                 effective_is_regex = True
         
         return _grep_internal(
@@ -302,6 +322,173 @@ def create_tools_with_context(
             max_results=max_results,
         )
 
+<<<<<<< ours
+<<<<<<< ours
+    def _network_enabled() -> bool:
+        # Prefer explicit config via env var, default off.
+        return os.getenv("ENABLE_NETWORK_TOOLS", "").strip().lower() in ("1", "true", "yes", "on")
+
+    def _network_allowlist() -> List[str]:
+        raw = os.getenv("NETWORK_ALLOWLIST", "")
+        return [x.strip().lower() for x in raw.split(",") if x.strip()]
+
+    def _is_allowed_url(url: str) -> Tuple[bool, str]:
+        try:
+            u = urlparse(url)
+        except Exception:
+            return False, "Invalid URL"
+        if u.scheme not in ("http", "https"):
+            return False, f"Unsupported URL scheme: {u.scheme}"
+        host = (u.hostname or "").lower()
+        if not host:
+            return False, "Missing hostname"
+        allow = _network_allowlist()
+        if not allow:
+            return False, "Network allowlist is empty (set NETWORK_ALLOWLIST)"
+        if any(host == a or host.endswith("." + a) for a in allow):
+            return True, ""
+        return False, f"Host not allowed by allowlist: {host}"
+
+    @tool
+    async def fetch_url(
+        url: str,
+        timeout_seconds: int = 15,
+        max_bytes: int = 1_000_000,
+        user_agent: str = "CodeReviewBot/1.0",
+    ) -> Dict[str, Any]:
+        """Fetch a web page (GET) for third-party library semantics verification.
+
+        Safety:
+        - Requires ENABLE_NETWORK_TOOLS=1 and NETWORK_ALLOWLIST to be set.
+        - Only http/https URLs; deny all other schemes.
+        - Caps download size to max_bytes.
+        - Do not include proprietary code or secrets in the URL.
+        """
+        if not _network_enabled():
+            return {"url": url, "status": None, "content": "", "error": "Network tools disabled (set ENABLE_NETWORK_TOOLS=1)"}
+
+        allowed, reason = _is_allowed_url(url)
+        if not allowed:
+            return {"url": url, "status": None, "content": "", "error": reason}
+
+        try:
+            timeout_seconds = max(1, int(timeout_seconds))
+        except Exception:
+            timeout_seconds = 15
+        try:
+            max_bytes = max(10_000, int(max_bytes))
+        except Exception:
+            max_bytes = 1_000_000
+
+        try:
+            req = Request(url, headers={"User-Agent": user_agent})
+            with urlopen(req, timeout=timeout_seconds) as resp:
+                status = getattr(resp, "status", None)
+                raw = resp.read(max_bytes + 1)
+                truncated = len(raw) > max_bytes
+                if truncated:
+                    raw = raw[:max_bytes]
+                # best-effort decode
+                try:
+                    text = raw.decode("utf-8", errors="replace")
+                except Exception:
+                    text = str(raw)
+            return {
+                "url": url,
+                "status": status,
+                "content": text,
+                "truncated": bool(truncated),
+                "max_bytes": max_bytes,
+                "error": None,
+            }
+        except Exception as e:
+            return {"url": url, "status": None, "content": "", "error": f"Fetch failed: {type(e).__name__}: {e}"}
+
+    class _DDGLiteParser(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.results: List[Dict[str, str]] = []
+            self._in_a = False
+            self._href: Optional[str] = None
+            self._text_parts: List[str] = []
+
+        def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+            if tag != "a":
+                return
+            attr = {k: (v or "") for k, v in attrs}
+            cls = attr.get("class", "")
+            href = attr.get("href", "")
+            # DuckDuckGo lite uses class="result-link"
+            if "result-link" in cls and href:
+                self._in_a = True
+                self._href = href
+                self._text_parts = []
+
+        def handle_endtag(self, tag: str) -> None:
+            if tag == "a" and self._in_a:
+                title = html.unescape("".join(self._text_parts).strip())
+                url = html.unescape(self._href or "").strip()
+                if title and url:
+                    self.results.append({"title": title, "url": url})
+                self._in_a = False
+                self._href = None
+                self._text_parts = []
+
+        def handle_data(self, data: str) -> None:
+            if self._in_a and data:
+                self._text_parts.append(data)
+
+    @tool
+    async def web_search(
+        query: str,
+        top_k: int = 5,
+        site: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Web search for third-party library/documentation facts.
+
+        Notes:
+        - Requires ENABLE_NETWORK_TOOLS=1 and NETWORK_ALLOWLIST includes the search host.
+        - Prefer adding `site` (e.g., docs.djangoproject.com) for high precision.
+        - Do not include proprietary code or secrets in the query.
+        """
+        if not _network_enabled():
+            return {"query": query, "results": [], "error": "Network tools disabled (set ENABLE_NETWORK_TOOLS=1)"}
+
+        try:
+            top_k = max(1, min(10, int(top_k)))
+        except Exception:
+            top_k = 5
+
+        q = (query or "").strip()
+        if site:
+            s = str(site).strip()
+            if s:
+                q = f"site:{s} {q}"
+        if not q:
+            return {"query": query, "results": [], "error": "Empty query"}
+
+        # DuckDuckGo lite HTML (simple to parse).
+        url = f"https://lite.duckduckgo.com/lite/?q={quote_plus(q)}"
+        allowed, reason = _is_allowed_url(url)
+        if not allowed:
+            return {"query": q, "results": [], "error": reason}
+
+        try:
+            req = Request(url, headers={"User-Agent": "CodeReviewBot/1.0"})
+            with urlopen(req, timeout=int(os.getenv("NETWORK_TIMEOUT_SECONDS", "15")) or 15) as resp:
+                raw = resp.read(int(os.getenv("NETWORK_MAX_BYTES", "1000000")) or 1_000_000)
+            text = raw.decode("utf-8", errors="replace")
+            parser = _DDGLiteParser()
+            parser.feed(text)
+            results = parser.results[:top_k]
+            return {"query": q, "results": results, "error": None}
+        except Exception as e:
+            return {"query": q, "results": [], "error": f"Search failed: {type(e).__name__}: {e}"}
+
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
     # ---- Lite-CPG tools (vendored into CodeReview/lite_cpg) ----
 
     def _normalize_str_list(v: Optional[List[str] | str], *, default: Optional[List[str]] = None) -> Optional[List[str]]:
@@ -490,6 +677,16 @@ def create_tools_with_context(
             meta["_budget"].update(m)
         out = {**data, **meta, "error": None}
         out.update(_attach_payload_stats(out))
+
+        # Guidance: Lite-CPG may be diff-scoped; an empty result often means "not indexed",
+        # not "doesn't exist". Provide an explicit hint to prevent tool-looping.
+        if not out.get("symbols") and not out.get("callsites"):
+            out["_hint"] = (
+                "No matches in current Lite-CPG DB (often diff/scoped). "
+                "Call cpg_ast_index() to see indexed files; if the target file isn't indexed, "
+                "fall back to run_grep with narrow include_patterns (e.g., a specific file path)."
+            )
+
         return out
 
     @tool

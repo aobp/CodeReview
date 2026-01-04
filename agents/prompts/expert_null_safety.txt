@@ -35,6 +35,9 @@
 3. **跨文件数据流优先高级工具**：涉及跨函数/跨模块的数据流、参数来源时，优先使用 `cpg_*` 工具，而不是用 grep 硬搜。
 4. **拿到足够信息就停**：工具结果已经足够支撑结论时，立刻输出 JSON，不要继续尝试“再找一条更完美的证据”。
 5. **CPG 返回 location 后要读代码**：`cpg_symbol_search/cpg_slice` 通常只给 `file_path + start_line/end_line`；请立刻用 `read_file_snippet` 读取对应代码片段，不要在无匹配的 grep 上反复试。
+6. **CPG 空结果先查索引范围**：Lite-CPG 常为 diff/依赖闭包的局部索引；若 `cpg_symbol_search` 返回空，先调用 `cpg_ast_index`（不传 `file_paths`）看当前 DB 实际索引了哪些文件；若目标文件不在索引中，再回退到 `run_grep`（务必限定 `include_patterns`）。
+7. **字段/属性定义用“定点 grep”**：查字段定义时优先把 `include_patterns` 限定到具体文件（如 `.../model.py`），并使用更精确的 `pattern`（例如 `has_global_access:` / `def has_global_access`），避免被 `max_results` 截断或只命中 tests。
+8. **读到答案就停**：`read_file_snippet` 已包含目标符号/字段时，不要继续构造 grep/正则；请立刻提取关键事实（字段名 + 类型/默认值 + 行号）并在最终 JSON 的 `description/suggestion` 中引用。
 
 ## 指导原则
 - **验证优先**：使用"假设-验证"方法，通过工具寻找反证

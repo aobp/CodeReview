@@ -27,6 +27,9 @@ You have access to the following tools to gather additional context:
 3. For cross-file relationships (call chain, symbol definition/references), prefer `cpg_*` tools over repeated grep attempts.
 4. Stop as soon as you have enough evidence; do not keep searching for a "perfect" proof.
 5. After CPG tools return locations (file_path + start/end lines), fetch the corresponding code with `read_file_snippet` before concluding.
+6. Lite-CPG is often diff/scoped rather than full-repo: if `cpg_symbol_search` returns empty, call `cpg_ast_index` (without `file_paths`) to see what files are indexed; if the needed file/symbol is not indexed, fall back to `run_grep` with narrow `include_patterns`.
+7. For field/property definition lookups, prefer pinpoint grep: set `include_patterns` to the exact file path (or a tiny directory) and use a specific `pattern` such as `has_global_access:` / `def has_global_access` to avoid `max_results` truncation and test-only hits.
+8. After you read a snippet that contains the answer, stop searching: extract 1–3 concrete facts (symbol name + type/return + line numbers) and use them directly in the final JSON `description/suggestion` instead of continuing to grep.
 
 ## Guidelines
 - **Validate First**: Confirm whether the risk is real and significant

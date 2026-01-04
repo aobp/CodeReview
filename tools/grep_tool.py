@@ -139,11 +139,24 @@ def _grep_internal(
     
     results = []
     result_count = 0
-    
+    truncated = False
+
+    def _dir_sort_key(dir_name: str) -> tuple:
+        # Heuristic: prefer product code over tests/vendor/cache directories.
+        preferred = ("src", "app", "packages", "sentry")
+        deprioritized = ("tests", "test", "docs", "doc", "examples", "fixtures", "scripts")
+        if dir_name in preferred:
+            return (0, preferred.index(dir_name), dir_name)
+        if dir_name in deprioritized:
+            return (2, deprioritized.index(dir_name), dir_name)
+        return (1, 0, dir_name)
+
     # 遍历文件
     for root, dirs, files in os.walk(repo_path):
         # 过滤目录
         dirs[:] = [d for d in dirs if not _should_skip_directory(d)]
+        dirs.sort(key=_dir_sort_key)
+        files.sort()
         
         for file_name in files:
             file_path = Path(root) / file_name
@@ -202,6 +215,7 @@ def _grep_internal(
                     result_count += 1
                     
                     if result_count >= max_results:
+                        truncated = True
                         break
             
             if result_count >= max_results:
@@ -212,8 +226,21 @@ def _grep_internal(
     
     if not results:
         return json.dumps({"matches": [], "message": f"No matches found for pattern: {pattern}"}, ensure_ascii=False, indent=2)
-    
-    return json.dumps({"matches": results, "total": len(results)}, ensure_ascii=False, indent=2)
+
+    if truncated:
+        return json.dumps(
+            {
+                "matches": results,
+                "total": len(results),
+                "truncated": True,
+                "max_results": max_results,
+                "message": "Results truncated at max_results; rerun with higher max_results or narrower include_patterns.",
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    return json.dumps({"matches": results, "total": len(results), "truncated": False}, ensure_ascii=False, indent=2)
 
 
 @tool
@@ -373,4 +400,3 @@ class GrepTool(BaseTool):
                 "match_count": 0,
                 "error": f"Error during grep search: {str(e)}"
             }
-
