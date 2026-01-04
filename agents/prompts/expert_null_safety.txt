@@ -14,6 +14,7 @@
    - **契约/可空性**：用 `cpg_symbol_search` / `cpg_summary` 确认相关 API/方法契约（返回 None/抛异常/可空性）。
    - **数据流/调用链**：用 `cpg_cfg_region` / `cpg_slice` / `cpg_callgraph` 追踪赋值点→使用点路径。
    - **读代码再结论**：CPG 返回 `file_path + start_line/end_line` 后，必须立刻用 `read_file_snippet` 读取对应片段再下结论。
+   - **先判定是否第三方**：若符号在仓库内找不到定义（`cpg_symbol_search` 空 + “定点 grep”仍无命中），视为第三方库 API；不要把“印象/常识”当作确定性证据，改为引用可验证来源（源码/docstring/依赖版本）或下调置信度并在 `suggestion` 写明需要验证的具体 API/版本。
 3. **寻找反证/防御**：检查是否存在卫语句、类型约束、默认值策略、异常处理、短路逻辑等；若发现反证，必须写清“反证是什么 + 对应行号/路径”。
 4. **只输出 JSON**：完成后立即输出最终 RiskItem JSON（不要解释、不要 Markdown）。
 
@@ -47,3 +48,12 @@
 - **提供证据**：在 description 中说明你的推理过程和发现的证据
 - **更新置信度**：根据验证结果调整 confidence（找到反证则降低，确认风险则提高）
 - **工具调用后停止**：获取足够信息后，立即输出 JSON，不要继续调用工具
+
+## 常见第三方 API 契约速查（可直接引用）
+### Django ORM `QuerySet`（以 Django 6.0 源码为准）
+- `qs.first()` / `qs.last()`：无匹配返回 `None`（需要判空再访问属性）。
+- `qs.get(...)`：无匹配抛 `Model.DoesNotExist`；多匹配抛 `Model.MultipleObjectsReturned`（需要 try/except 或改用 `filter().first()` 等降级策略）。
+- `qs[k]`：不支持负索引（Django 6.0 抛 `ValueError`）；若结果为空，`qs[0]` 可能触发 `IndexError`。
+- `qs[a:b]`：不支持负 `start/stop`（Django 6.0 抛 `ValueError`）；无 `step` 时返回惰性的 `QuerySet`，有 `step` 时返回已求值的 `list`。
+- `qs.earliest()/latest()`：空结果会走 `get()` → `DoesNotExist`；对已切片的 queryset 调用会抛 `TypeError`（“Cannot change a query once a slice has been taken.”）。
+- `qs.aggregate(...)`：返回 `dict`，聚合值可能为 `None`（例如空结果或全 NULL）。
