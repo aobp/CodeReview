@@ -10,6 +10,13 @@ zhipuai>=2.0.0  # ZhipuAI SDK (required by ChatZhipuAI)
 tree-sitter>=0.20.0
 unidiff>=0.7.0
 tree-sitter-python>=0.20.0
+pyyaml>=6.0.0  # Load config.yaml
+python-dotenv>=1.0.0  # Auto-load .env
+tree-sitter-languages>=1.10.0
+tree-sitter-go>=0.20.0
+tree-sitter-java>=0.20.0
+tree-sitter-javascript>=0.20.0
+tree-sitter-ruby>=0.20.0
 
 fastapi>=0.110.0
 uvicorn>=0.27.0
