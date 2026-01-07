@@ -776,6 +776,15 @@ def get_repo_name(workspace_root: Path) -> str:
     """
     workspace_root = Path(workspace_root).resolve()
     repo_name = workspace_root.name
+
+    # If workspace root is a worktree path like .../<owner>/<repo>/<pr>/<sha>,
+    # prefer the repo directory name over the head sha.
+    if re.fullmatch(r"[0-9a-f]{40}", repo_name):
+        parent = workspace_root.parent
+        if parent.name.isdigit():
+            candidate = parent.parent.name
+            if candidate and candidate not in [".", ""]:
+                return candidate
     
     # Handle edge cases where name might be empty or "."
     if repo_name in [".", ""] or len(repo_name) == 0:

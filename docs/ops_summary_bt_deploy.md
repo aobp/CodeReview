@@ -85,6 +85,51 @@ command=/bin/bash -lc 'set -euo pipefail; cd /home/halo/cpgbot/CodeReview; set -
 - Webhook Deliveries → Redeliver
 - 服务端 `.storage/github_pat/jobs.sqlite3` 里应出现新 job（`queued/running/done`）
 
+## SQLite 查询与管理
+
+- 默认 DB：`.storage/github_pat/jobs.sqlite3`（可用 `DB_PATH` 覆盖）
+- 进入：`sqlite3 .storage/github_pat/jobs.sqlite3`
+
+常用查询：
+
+```sql
+-- 查看表与结构
+.tables
+.schema jobs
+
+-- 最近 20 条任务
+SELECT id, repo_full_name, pr_number, status,
+       datetime(created_at, 'unixepoch') AS created_at,
+       datetime(updated_at, 'unixepoch') AS updated_at
+FROM jobs
+ORDER BY id DESC
+LIMIT 20;
+
+-- 状态统计
+SELECT status, COUNT(*) AS cnt FROM jobs GROUP BY status;
+
+-- 按仓库/PR 过滤
+SELECT * FROM jobs
+WHERE repo_full_name = 'owner/repo' AND pr_number = 123
+ORDER BY id DESC
+LIMIT 5;
+
+-- 查看排队/运行中任务
+SELECT * FROM jobs WHERE status IN ('queued', 'running') ORDER BY updated_at ASC;
+```
+
+清理历史记录（可选）：
+
+```sql
+DELETE FROM jobs
+WHERE status IN ('done', 'failed')
+  AND updated_at < strftime('%s','now') - 86400 * 30;
+VACUUM;
+```
+
+提示：服务不会轮询 DB；手工改状态不会自动重新入队，建议通过重新触发评论来重跑。
+
+
 ## PR 测试集准备（批量创建 PR）
 
 脚本：`test/sync_prs_and_recreate.py`
