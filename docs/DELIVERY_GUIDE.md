@@ -7,14 +7,15 @@
 ## 1. 安装
 
 基础环境：
-- Python 3.10+
+- Conda（Miniconda/Anaconda）
+- Python 3.13（必须）
 - git
 
-安装依赖：
+安装依赖（Conda）：
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip
+conda create -n codereview python=3.13 -y
+conda activate codereview
+python -m pip install -U pip
 pip install -r requirements.txt
 ```
 
@@ -23,6 +24,7 @@ pip install -r requirements.txt
 - TypeScript/JavaScript: `biome`
 - Go: `go vet`（随 Go 自带）
 - Java: `pmd`
+说明：这些工具仅用于语法/静态检查，缺失时系统会自动跳过该语言的检查，不影响主流程运行；安装命令见文末。
 
 ## 2. 配置（重点：环境变量）
 
@@ -30,26 +32,21 @@ pip install -r requirements.txt
 
 推荐用环境变量，避免把 key 写进配置文件：
 ```bash
-export LLM_PROVIDER="deepseek"  # openai / deepseek / zhipuai
 export LLM_API_KEY="your-llm-api-key"
-export LLM_MODEL="deepseek-chat"  # 可选
-export LLM_BASE_URL="https://api.deepseek.com"  # 可选（OpenAI 兼容 API）
 ```
+优先级规则：`LLM_API_KEY` > provider 专用 key（`DEEPSEEK_API_KEY` / `ZHIPUAI_API_KEY`）。注意、provider 专用 key 在 config.py L210行处
 
-优先级规则：`LLM_API_KEY` > provider 专用 key（`DEEPSEEK_API_KEY` / `ZHIPUAI_API_KEY`）。
-
-### 2.2 config.yaml（可选，默认可不改）
+### 2.2 config.yaml
 
 仓库根目录已提供 `config.yaml`，你可以保持默认值直接运行。
 
-最小改动（仅当你不想用环境变量时）：
+最小改动：
 - `llm.provider`
 - `llm.model`
-- `llm.api_key`
 
 其余字段保持默认即可。
 
-### 2.3 GitHub PAT Webhook 服务（.env）
+### 2.3 GitHub PAT Webhook 服务（.env） （本地运行不需要管）
 
 示例文件：`.env.github_pat.example`。复制为 `.env` 并填写：
 ```bash
@@ -61,21 +58,8 @@ set -a; source .env; set +a
 - `GITHUB_TOKEN`
 - `GITHUB_WEBHOOK_SECRET`
 - `ALLOWED_REPOS`
-- `LLM_PROVIDER`
-- `LLM_API_KEY`
 
 其余变量保持默认即可运行。
-
-### 2.4 最小改动清单
-
-CLI 模式：
-- 设置 `LLM_PROVIDER` + `LLM_API_KEY`
-- `config.yaml` 保持默认即可
-
-Webhook 服务模式：
-- 在 `.env` 中填写 `GITHUB_TOKEN` / `GITHUB_WEBHOOK_SECRET` / `ALLOWED_REPOS`
-- 同时填写 `LLM_PROVIDER` / `LLM_API_KEY`
-- 其余项全部保留默认值
 
 ## 3. 使用
 
@@ -85,9 +69,9 @@ Webhook 服务模式：
 python main.py --repo /path/to/repo --base main --head feature-x
 ```
 
-输出：
-- 默认生成 `review_results.json`
-- 详细日志在 `log/` 目录
+输在 `log/` 目录：
+- `review_results.json`
+- 对话历史信息
 
 ### 3.2 GitHub PAT Webhook 服务
 
@@ -113,17 +97,30 @@ OWNER=owner REPO=repo PR_NUMBER=123 bash docs/check_pat.sh
 
 ## 4. 可选依赖与特性
 
-建议安装（否则相关功能会降级）：
-- `pyyaml`：加载 `config.yaml`
-- `python-dotenv`：自动读取 `.env`
-
-Lite-CPG 多语言支持（可选）：
-- `tree-sitter-languages`
-- `tree-sitter-go` / `tree-sitter-java` / `tree-sitter-javascript` / `tree-sitter-ruby`
-
 ## 5. 常见问题
 
 - 启动时报 `api_key client option must be set`：未配置 `LLM_API_KEY` / `LLM_PROVIDER`
-- Webhook 401：`GITHUB_WEBHOOK_SECRET` 不一致，或未设置 `ALLOW_UNSIGNED_WEBHOOKS=1`（仅限本地调试）
 - PAT 403：Token 权限不足，执行 `docs/check_pat.sh` 自检
 - `config.yaml` 未生效：缺少 `pyyaml` 或配置文件格式错误
+
+## 6. 可选工具安装命令（集中）
+
+Python（ruff）：
+```bash
+pip install ruff
+```
+
+TypeScript/JavaScript（biome）：
+```bash
+npm install -g @biomejs/biome
+```
+
+Go（go vet）：
+```bash
+go version
+```
+
+Java（pmd）：
+```bash
+brew install pmd
+```
